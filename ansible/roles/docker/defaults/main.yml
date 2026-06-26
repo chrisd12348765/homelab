@@ -1,0 +1,14 @@
+---
+# docker role defaults
+# Compose v2 plugin is installed as a pinned binary into the docker cli-plugins
+# dir — repo-independent, so it works on hosts using Debian's docker.io (no Docker
+# apt repo) just as well as on docker-ce hosts. This standardizes every host on
+# `docker compose` v2 (no legacy v1 docker-compose).
+docker_compose_version: "v5.2.0"
+docker_compose_arch: x86_64
+docker_compose_plugin_url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-{{ docker_compose_arch }}"
+docker_cli_plugins_dir: /usr/local/lib/docker/cli-plugins
+# Downloaded once to the controller, then copied to each host — so targets with no
+# internet/DNS (e.g. the locked-down vpn-exit node) still get the plugin.
+docker_compose_cache_dir: "{{ lookup('env', 'HOME') }}/.cache/homelab"
+docker_compose_cache: "{{ docker_compose_cache_dir }}/docker-compose-{{ docker_compose_version }}-{{ docker_compose_arch }}"

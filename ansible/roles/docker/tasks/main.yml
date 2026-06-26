@@ -1,13 +1,52 @@
 ---
-# roles/docker — install Docker Engine + Compose plugin and enable the service.
+# roles/docker — install Docker Engine + the Compose v2 plugin, enable the service.
 # Stack deployment lives in the per-app playbooks (e.g. playbooks/immich.yml).
+#
+# Compose v2 comes from the official plugin binary (not apt) so every host —
+# including Debian docker.io hosts with no Docker apt repo — gets `docker compose`.
 
-- name: Install Docker + Compose plugin
+- name: Install Docker engine
   ansible.builtin.package:
-    name:
-      - docker.io
-      - docker-compose-plugin
+    name: docker.io
     state: present
+
+- name: Ensure docker cli-plugins dir
+  ansible.builtin.file:
+    path: "{{ docker_cli_plugins_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check installed compose plugin version
+  ansible.builtin.command: docker compose version --short
+  register: docker_compose_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false   # read-only; run in --check so the version guard is accurate
+
+- name: Cache Compose v2 plugin on the controller
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+    - name: Ensure controller cache dir
+      ansible.builtin.file:
+        path: "{{ docker_compose_cache_dir }}"
+        state: directory
+        mode: "0755"
+    - name: Download Compose v2 plugin to controller
+      ansible.builtin.get_url:
+        url: "{{ docker_compose_plugin_url }}"
+        dest: "{{ docker_compose_cache }}"
+        mode: "0755"
+  when: docker_compose_version | regex_replace('^v','') not in (docker_compose_installed.stdout | default(''))
+
+- name: Install Compose v2 plugin from controller cache
+  ansible.builtin.copy:
+    src: "{{ docker_compose_cache }}"
+    dest: "{{ docker_cli_plugins_dir }}/docker-compose"
+    mode: "0755"
+  when: docker_compose_version | regex_replace('^v','') not in (docker_compose_installed.stdout | default(''))
 
 - name: Ensure Docker is enabled and running
   ansible.builtin.service:
