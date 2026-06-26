@@ -21,6 +21,7 @@ Compose   ──runs──────▶    application stacks
 - Existing cluster retrofitted into code via OpenTofu config-driven import.
 - A real service (Immich) migrated under full IaC management with zero downtime.
 - Secret management with SOPS + age; a gitleaks gate runs before every publish.
+- A real DR runbook ([`docs/recovery.md`](docs/recovery.md)) — config-vs-data recovery, age-key handling, single-guest and full-cluster rebuild.
 
 > Domains, IP addresses, and node names in this public repo are placeholders.
 > It mirrors the structure of my real setup, not its actual topology.
