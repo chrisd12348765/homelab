@@ -22,5 +22,5 @@ Compose   ──runs──────▶    application stacks
 - A real service (Immich) migrated under full IaC management with zero downtime.
 - Secret management with SOPS + age; a gitleaks gate runs before every publish.
 
-> Hostnames, domains, and addresses in this public repo are placeholders.
+> Domains, IP addresses, and node names in this public repo are placeholders.
 > It mirrors the structure of my real setup, not its actual topology.
