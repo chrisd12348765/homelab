@@ -1,0 +1,16 @@
+---
+# roles/docker — install Docker Engine + Compose plugin and enable the service.
+# Stack deployment lives in the per-app playbooks (e.g. playbooks/immich.yml).
+
+- name: Install Docker + Compose plugin
+  ansible.builtin.package:
+    name:
+      - docker.io
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker is enabled and running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true

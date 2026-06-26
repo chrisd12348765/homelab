@@ -1,0 +1,14 @@
+# Copy to inventory.yml (gitignored) and fill real hosts/IPs.
+# Reach nodes over Tailscale; group by role so plays target cleanly.
+all:
+  children:
+    proxmox_nodes:
+      hosts:
+        node01: { ansible_host: 100.64.0.11 }
+        node02: { ansible_host: 100.64.0.10 }
+    docker_hosts:
+      hosts:
+        immich:    { ansible_host: 10.0.0.109 }
+        dashboard: { ansible_host: 10.0.0.107 }
+  vars:
+    ansible_user: root
