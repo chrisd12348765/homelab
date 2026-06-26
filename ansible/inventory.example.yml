@@ -13,6 +13,12 @@ all:
         obsidian:    { ansible_host: 10.0.0.103 }
         media-stack: { ansible_host: 10.0.0.105 }
         agent:       { ansible_host: 10.0.0.106 }
-        dashboard:   { ansible_host: 10.0.0.107 }
+        homepage:    { ansible_host: 10.0.0.107 }   # Homepage; guest named "homarr"
+        vpn-exit:    { ansible_host: 10.0.0.102 }   # PIA WireGuard exit (compose)
+    native_hosts:
+      hosts:
+        adguard:     { ansible_host: 10.0.0.101 }   # LAN DNS resolver
+        syncthing:   { ansible_host: 10.0.0.108 }   # sync hub
+        caddy:       { ansible_host: 10.0.0.104 }   # reverse proxy + pve-sso sidecar
   vars:
     ansible_user: root
