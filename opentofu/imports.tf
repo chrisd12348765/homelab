@@ -12,15 +12,14 @@
 #   node01: 100 vaultwarden 101 adguard 102 vpn-exit 103 obsidian
 #                  104 caddy 107 homarr 108 syncthing  (all lxc)
 
-# --- DONE: imported + adopted into state (import blocks removed after adoption;
-#     resources live in their own <name>.tf files):
-#       immich  (LXC 109 on node02)          2026-06-25  -> immich.tf
-#       adguard (LXC 101 on node01) 2026-06-26  -> adguard.tf
-#       caddy   (LXC 104 on node01) 2026-06-26  -> caddy.tf
-
-# --- Backlog: import the rest using the proven Immich pattern -----------------
-# import { to = proxmox_virtual_environment_container.vaultwarden, id = "node01/100" }
-# import { to = proxmox_virtual_environment_container.homarr,      id = "node01/107" }
-# import { to = proxmox_virtual_environment_container.syncthing,   id = "node01/108" }
-# import { to = proxmox_virtual_environment_vm.media_stack,        id = "node02/105" }
-# import { to = proxmox_virtual_environment_vm.agent,             id = "node02/106" }
+# --- DONE: every guest imported + adopted into state (import blocks removed after
+#     adoption; each resource lives in its own <name>.tf):
+#       node01 LXCs: vaultwarden/100, adguard/101, vpn-exit/102, obsidian/103,
+#                           caddy/104, homarr/107, syncthing/108
+#       node02:               media-stack/105 (qemu), agent/106 (qemu), immich/109 (lxc)
+#     Whole cluster is now under IaC management — `tofu plan` == "No changes".
+#
+# Multi-line import form is mandatory (single-line import {to=..,id=..} is invalid HCL).
+# To retrofit a future guest: add a multi-line import block here, run
+#   ./scripts/tofu.sh plan -generate-config-out=generated.tf
+# clean the output into <name>.tf, apply to adopt, then delete the import block.
