@@ -19,7 +19,8 @@ Compose   ──runs──────▶    application stacks
 ## Highlights
 - Three-layer IaC: infra → config → apps, each independently reproducible.
 - Existing cluster retrofitted into code via OpenTofu config-driven import.
-- Secret management with SOPS + age; CI secret-scanning gate before publish.
+- A real service (Immich) migrated under full IaC management with zero downtime.
+- Secret management with SOPS + age; a gitleaks gate runs before every publish.
 
 > Hostnames, domains, and addresses in this public repo are placeholders.
 > It mirrors the structure of my real setup, not its actual topology.
