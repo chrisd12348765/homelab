@@ -1,0 +1,35 @@
+---
+# compose_stack — deploy one Docker Compose stack, secrets and all.
+#
+# The caller sets:
+#   stack_dir   absolute dir on the host where the stack lives (data may be bind-
+#               mounted here, so it must match the existing deployment exactly)
+#   compose_src dir in this repo holding docker-compose.yml + the SOPS env
+#   enc_env     filename of the SOPS-encrypted env inside compose_src
+#
+# The .env is decrypted ON THE CONTROLLER via community.sops (the age key never
+# leaves the workstation), then written to the host as a 0600 .env.
+
+- name: Create stack directory
+  ansible.builtin.file:
+    path: "{{ stack_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Render .env from SOPS (decrypted on controller)
+  ansible.builtin.copy:
+    content: "{{ lookup('community.sops.sops', compose_src ~ '/' ~ enc_env) }}"
+    dest: "{{ stack_dir }}/.env"
+    mode: "0600"
+  no_log: true   # don't echo secrets into Ansible output
+
+- name: Copy compose file
+  ansible.builtin.copy:
+    src: "{{ compose_src }}/docker-compose.yml"
+    dest: "{{ stack_dir }}/docker-compose.yml"
+    mode: "0640"
+
+- name: Bring the stack up
+  community.docker.docker_compose_v2:
+    project_src: "{{ stack_dir }}"
+    state: present

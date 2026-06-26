@@ -1,0 +1,19 @@
+# Vaultwarden (LXC 100). Data (db.sqlite3, rsa_key.pem, attachments) lives in the
+# bind-mounted project dir, so the deploy stack_dir MUST stay /opt/vaultwarden.
+# ADMIN_TOKEN is rendered into .env from vaultwarden.enc.env (SOPS) at deploy time.
+name: vaultwarden
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: always
+    ports:
+      - "8080:80"
+      - "3012:3012"
+    volumes:
+      - /opt/vaultwarden:/data
+    environment:
+      WEBSOCKET_ENABLED: "true"
+      SIGNUPS_ALLOWED: "true"
+      ADMIN_TOKEN: "${ADMIN_TOKEN}"
