@@ -12,13 +12,14 @@
 #   node01: 100 vaultwarden 101 adguard 102 vpn-exit 103 obsidian
 #                  104 caddy 107 homarr 108 syncthing  (all lxc)
 
-# --- DONE: Immich (LXC 109 on node02) imported + adopted into state 2026-06-25.
-#     (import block removed after adoption; resource lives in immich.tf)
+# --- DONE: imported + adopted into state (import blocks removed after adoption;
+#     resources live in their own <name>.tf files):
+#       immich  (LXC 109 on node02)          2026-06-25  -> immich.tf
+#       adguard (LXC 101 on node01) 2026-06-26  -> adguard.tf
+#       caddy   (LXC 104 on node01) 2026-06-26  -> caddy.tf
 
 # --- Backlog: import the rest using the proven Immich pattern -----------------
 # import { to = proxmox_virtual_environment_container.vaultwarden, id = "node01/100" }
-# import { to = proxmox_virtual_environment_container.adguard,     id = "node01/101" }
-# import { to = proxmox_virtual_environment_container.caddy,       id = "node01/104" }
 # import { to = proxmox_virtual_environment_container.homarr,      id = "node01/107" }
 # import { to = proxmox_virtual_environment_container.syncthing,   id = "node01/108" }
 # import { to = proxmox_virtual_environment_vm.media_stack,        id = "node02/105" }
