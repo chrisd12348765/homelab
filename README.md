@@ -1,4 +1,4 @@
-# Homelab as Code
+# HaC (Homelab as Code)
 
 A reproducible, GitOps-style homelab on a Proxmox cluster — provisioning,
 configuration, and app deployment all defined in code.
