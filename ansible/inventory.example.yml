@@ -8,7 +8,11 @@ all:
         node02: { ansible_host: 100.64.0.10 }
     docker_hosts:
       hosts:
-        immich:    { ansible_host: 10.0.0.109 }
-        dashboard: { ansible_host: 10.0.0.107 }
+        immich:      { ansible_host: 10.0.0.109 }
+        vaultwarden: { ansible_host: 10.0.0.100 }
+        obsidian:    { ansible_host: 10.0.0.103 }
+        media-stack: { ansible_host: 10.0.0.105 }
+        agent:       { ansible_host: 10.0.0.106 }
+        dashboard:   { ansible_host: 10.0.0.107 }
   vars:
     ansible_user: root

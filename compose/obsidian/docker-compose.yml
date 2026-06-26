@@ -1,0 +1,18 @@
+# CouchDB backing Obsidian LiveSync (LXC 103). Data lives in ./data + ./local.d
+# relative to the project dir, so the deploy stack_dir MUST stay /opt/couchdb.
+# COUCHDB_PASSWORD is rendered into .env from obsidian.enc.env (SOPS) at deploy time.
+name: couchdb
+
+services:
+  couchdb:
+    image: couchdb:3
+    container_name: couchdb
+    restart: unless-stopped
+    ports:
+      - "5984:5984"
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./local.d:/opt/couchdb/etc/local.d

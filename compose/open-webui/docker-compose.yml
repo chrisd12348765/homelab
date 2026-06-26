@@ -1,0 +1,25 @@
+# Open WebUI (LLM chat front-end) on the agent host. Project name resolves to
+# "workspace" so the existing workspace_open-webui volume + container re-adopt;
+# deploy stack_dir MUST stay /home/homelab/.openclaw/workspace.
+# Secrets render into .env from open-webui.enc.env (SOPS) at deploy time.
+name: workspace
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG:-main}
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "${OPEN_WEBUI_PORT:-3000}:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OPENAI_API_BASE_URL=https://api.minimax.chat/v1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:

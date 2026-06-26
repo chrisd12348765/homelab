@@ -1,0 +1,328 @@
+networks:
+  servarrnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+services:
+
+# ---------------- VPN ----------------
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    init: true
+    cap_add: [ NET_ADMIN ]
+    devices: [ /dev/net/tun:/dev/net/tun ]
+    networks: [ servarrnet ]
+    ports:
+      - "8080:8080"
+      - "5030:5030"
+      - "5031:5031"
+    volumes:
+      - ./gluetun:/tmp/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - SERVER_REGIONS=${SERVER_REGIONS}
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_STATUS_FILE=/tmp/gluetun/forwarded_port
+      - TZ=${TZ}
+      - LOCAL_NETWORK=172.23.0.0/24,100.64.0.0/10
+      - FIREWALL_INPUT_PORTS=8080,5030,5031
+      - DOT=on
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD-SHELL","ping -c 1 1.1.1.1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+# ---------------- qBittorrent ----------------
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    shm_size: "1gb" # Helps with stability during high-speed transfers
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ./qbittorrent:/config
+      - ${DL}:/data/downloads
+      - /mnt/media:/mnt/media
+    healthcheck:
+      # WebUI can stay up in a stale namespace after gluetun restarts; require tun0 too.
+      test: ["CMD-SHELL", "test -d /sys/class/net/tun0 && curl -f http://localhost:8080/api/v2/app/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - autoheal=true
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    restart: unless-stopped
+
+# ---------------- Autoheal ----------------
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    network_mode: none
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=120
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+# ---------------- Prowlarr ----------------
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    networks: [ servarrnet ]
+    ports:
+      - "9696:9696"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./prowlarr:/config
+    restart: unless-stopped
+
+# ---------------- Sonarr ----------------
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    networks: [ servarrnet ]
+    ports:
+      - "8989:8989"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./sonarr:/config
+      - ${DL}:/data/downloads
+      - ${TV}:/data/tv
+    restart: unless-stopped
+
+# ---------------- Radarr ----------------
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    networks: [ servarrnet ]
+    ports:
+      - "7878:7878"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./radarr:/config
+      - ${DL}:/data/downloads
+      - ${MOVIES}:/data/movies
+    restart: unless-stopped
+
+# ---------------- Jellyseerr ----------------
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    networks: [ servarrnet ]
+    ports:
+      - "5055:5055"
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=debug
+    volumes:
+      - ./jellyseerr:/app/config
+    restart: unless-stopped
+
+# ---------------- Jellyfin ----------------
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    networks: [ servarrnet ]
+    ports:
+      - "8096:8096"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - ./jellyfin:/config
+      - ${TV}:/data/tv
+      - ${MOVIES}:/data/movies
+      - ${MUSIC}:/data/music
+    restart: unless-stopped
+
+# ---------------- Soulseek (VPN) ----------------
+  slskd:
+    image: slskd/slskd:latest
+    container_name: slskd
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - TZ=${TZ}
+      - SLSKD_REMOTE_CONFIGURATION=true
+      - SLSKD_SLSK_USERNAME=${SLSK_USERNAME}
+      - SLSKD_SLSK_PASSWORD=${SLSK_PASSWORD}
+      - SLSKD_USERNAME=${SLSKD_WEB_USER}
+      - SLSKD_PASSWORD=${SLSKD_WEB_PASS}
+      - SLSKD_API_KEY=${SLSKD_API_KEY}
+      - SLSKD_DOWNLOADS_DIR=/app/downloads
+      - SLSKD_UMASK=002
+    volumes:
+      - ./slskd:/app
+      - ${MUSIC}/incoming:/app/downloads
+    restart: unless-stopped
+
+# ---------------- Soulbeet ----------------
+  soulbeet:
+    image: docker.io/docccccc/soulbeet:latest
+    container_name: soulbeet
+    networks: [ servarrnet ]
+    ports:
+      - "9765:9765"
+    environment:
+      - DATABASE_URL=sqlite:/data/soulbeet.db
+      - DOWNLOAD_PATH=/downloads
+      # Use the path we just discovered
+      - BEETS_CONFIG=/root/.config/beets/config.yaml
+      - TZ=${TZ}
+      - SLSKD_URL=http://gluetun:5030
+      - SLSKD_API_KEY=${SLSKD_API_KEY}
+    volumes:
+      - ./soulbeet:/data
+      # We mount the file directly to the path Beets reported
+      - ./soulbeet-config/config.yaml:/root/.config/beets/config.yaml
+      - ${MUSIC}/incoming:/downloads
+      - ${MUSIC}:/music
+    restart: unless-stopped
+# ---------------- Navidrome ----------------
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    networks: [ servarrnet ]
+    ports:
+      - "4533:4533"
+    environment:
+      - ND_LOGLEVEL=info
+      - ND_SCANSCHEDULE=1h
+      - ND_MUSICFOLDER=/data/music
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - ND_SCANNER_GROUPALBUMRELEASES=true
+    volumes:
+      - ./navidrome:/data
+      - ${MUSIC}:/data/music
+    restart: unless-stopped
+
+# ---------------- Flaresolverr ----------------
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    networks: [ servarrnet ]
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    restart: unless-stopped
+
+# ---------------- MeTube ----------------
+  metube:
+    image: ghcr.io/alexta69/metube:latest
+    container_name: metube
+    networks: [ servarrnet ]
+    ports:
+      - "8081:8081"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DOWNLOAD_DIR=/data/movies
+      - YTDL_OPTIONS={"format":"mp4","merge_output_format":"mp4"}
+    volumes:
+      - ./metube:/config
+      - ${DL}:/data/downloads
+      - ${MOVIES}:/data/movies
+    restart: unless-stopped
+
+# ---------------- Autobrr ----------------
+  autobrr:
+    image: ghcr.io/autobrr/autobrr:latest
+    container_name: autobrr
+    networks: [ servarrnet ]
+    ports:
+      - "7474:7474"
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./autobrr:/config
+      - ./scripts/autobrr_duplicate_guard.sh:/app/autobrr_duplicate_guard.sh:ro
+      - ${MOVIES}:/mnt/media/movies:ro
+      - ${TV}:/mnt/media/tv:ro
+    restart: unless-stopped
+
+# ---------------- Cross-seed ----------------
+  cross-seed:
+    profiles: ["ratio-auto"]
+    image: ghcr.io/cross-seed/cross-seed:latest
+    container_name: cross-seed
+    networks: [ servarrnet ]
+    ports:
+      - "2468:2468"
+    depends_on:
+      - prowlarr
+      - gluetun
+      - qbittorrent
+    user: "${PUID}:${PGID}"
+    command: ["daemon"]
+    volumes:
+      - ./cross-seed:/config
+      - ${DL}:/data/downloads
+      - /mnt/media:/mnt/media
+    restart: unless-stopped
+
+# ---------------- Arr Extension Guard ----------------
+  arr-extension-guard:
+    image: python:3.12-alpine
+    container_name: arr-extension-guard
+    networks: [ servarrnet ]
+    depends_on:
+      - sonarr
+      - radarr
+      - gluetun
+      - qbittorrent
+    environment:
+      - TZ=${TZ}
+      - POLL_SECONDS=60
+      - BAD_EXTENSIONS=.exe,.scr
+      - QBIT_URL=http://gluetun:8080
+      - SONARR_URL=http://sonarr:8989
+      - RADARR_URL=http://radarr:7878
+      - SONARR_CONFIG=/config/sonarr/config.xml
+      - RADARR_CONFIG=/config/radarr/config.xml
+    command: ["python", "/app/arr_extension_guard.py"]
+    volumes:
+      - ./scripts/arr_extension_guard.py:/app/arr_extension_guard.py:ro
+      - ./sonarr:/config/sonarr:ro
+      - ./radarr:/config/radarr:ro
+    restart: unless-stopped
