@@ -38,7 +38,7 @@ services:
     environment:
       - PIA_USER=${OPENVPN_USER}
       - PIA_PASS=${OPENVPN_PASSWORD}
-      - PIA_LOCATIONS=ca_montreal,mexico,nl_amsterdam   # all PF-capable; comma list = fallback
+      - PIA_LOCATIONS=ca_toronto,ca_montreal   # closest PF-capable regions to home (US East); latency-picked, CA fallback
       - LOCAL_NETWORKS=10.0.0.0/24,100.64.0.0/10   # LAN + tailnet; NOT the container's own 172.23.0.0/24 (connected subnet is auto-allowed; listing it fails route-add)
       - DNS=pia
       - PF_ENABLED=true
