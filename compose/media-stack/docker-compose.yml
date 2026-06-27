@@ -8,46 +8,64 @@ networks:
 services:
 
 # ---------------- VPN ----------------
-  gluetun:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun
+# PIA WireGuard via x0lie/pia-tun (same image as the vpn-exit LXC). Replaced
+# qmcgaw/gluetun (PIA/OpenVPN) 2026-06-26 for WireGuard speed + homelab
+# consistency. qbittorrent + slskd ride this netns (network_mode: service:pia-tun).
+# Native PF sync (PS_CLIENT=qbittorrent) pushes the forwarded port into qbit,
+# retiring the live-only scripts/sync-qbit-port.sh cron. WG iface is `pia0`.
+# The `gluetun` network alias keeps existing http://gluetun:* references working.
+  pia-tun:
+    image: ghcr.io/x0lie/pia-tun:latest
+    container_name: pia-tun
+    hostname: pia-tun
     init: true
     cap_add: [ NET_ADMIN ]
+    cap_drop: [ ALL ]
     devices: [ /dev/net/tun:/dev/net/tun ]
-    networks: [ servarrnet ]
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.forwarding=1
+    networks:
+      servarrnet:
+        aliases: [ gluetun ]
     ports:
-      - "8080:8080"
-      - "5030:5030"
-      - "5031:5031"
+      - "8080:8080"   # qbittorrent WebUI (rides this netns)
+      - "5030:5030"   # slskd
+      - "5031:5031"   # slskd
     volumes:
-      - ./gluetun:/tmp/gluetun
+      - ./gluetun:/run/pia-tun   # PORT_FILE → host-visible at ./gluetun/port
     environment:
-      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
-      - OPENVPN_USER=${OPENVPN_USER}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-      - SERVER_REGIONS=${SERVER_REGIONS}
-      - VPN_PORT_FORWARDING=on
-      - VPN_PORT_FORWARDING_STATUS_FILE=/tmp/gluetun/forwarded_port
-      - TZ=${TZ}
-      - LOCAL_NETWORK=172.23.0.0/24,100.64.0.0/10
-      - FIREWALL_INPUT_PORTS=8080,5030,5031
-      - DOT=on
+      - PIA_USER=${OPENVPN_USER}
+      - PIA_PASS=${OPENVPN_PASSWORD}
+      - PIA_LOCATIONS=ca_montreal,mexico,nl_amsterdam   # all PF-capable; comma list = fallback
+      - LOCAL_NETWORKS=10.0.0.0/24,100.64.0.0/10   # LAN + tailnet; NOT the container's own 172.23.0.0/24 (connected subnet is auto-allowed; listing it fails route-add)
+      - DNS=pia
+      - PF_ENABLED=true
+      - PS_CLIENT=qbittorrent
+      - PORT_FILE=/run/pia-tun/port
+      - METRICS_ENABLED=true
+      - METRICS_PORT=9090
+      - INSTANCE_NAME=media-server
+      - GET_REAL_IP=false
       - LOG_LEVEL=info
+      - TZ=${TZ}
     healthcheck:
-      test: ["CMD-SHELL","ping -c 1 1.1.1.1 || exit 1"]
+      test: ["CMD-SHELL","wget -qO- http://127.0.0.1:9090/health >/dev/null || exit 1"]
       interval: 20s
-      timeout: 10s
-      retries: 5
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     restart: unless-stopped
 
 # ---------------- qBittorrent ----------------
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
-    network_mode: "service:gluetun"
+    network_mode: "service:pia-tun"
     shm_size: "1gb" # Helps with stability during high-speed transfers
     depends_on:
-      gluetun:
+      pia-tun:
         condition: service_healthy
     environment:
       - PUID=${PUID}
@@ -59,8 +77,8 @@ services:
       - ${DL}:/data/downloads
       - /mnt/media:/mnt/media
     healthcheck:
-      # WebUI can stay up in a stale namespace after gluetun restarts; require tun0 too.
-      test: ["CMD-SHELL", "test -d /sys/class/net/tun0 && curl -f http://localhost:8080/api/v2/app/version"]
+      # WebUI can stay up in a stale namespace after pia-tun restarts; require the WG iface too.
+      test: ["CMD-SHELL", "test -d /sys/class/net/pia0 && curl -f http://localhost:8080/api/v2/app/version"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -173,9 +191,9 @@ services:
   slskd:
     image: slskd/slskd:latest
     container_name: slskd
-    network_mode: "service:gluetun"
+    network_mode: "service:pia-tun"
     depends_on:
-      gluetun:
+      pia-tun:
         condition: service_healthy
     environment:
       - TZ=${TZ}
@@ -291,7 +309,7 @@ services:
       - "2468:2468"
     depends_on:
       - prowlarr
-      - gluetun
+      - pia-tun
       - qbittorrent
     user: "${PUID}:${PGID}"
     command: ["daemon"]
@@ -309,7 +327,7 @@ services:
     depends_on:
       - sonarr
       - radarr
-      - gluetun
+      - pia-tun
       - qbittorrent
     environment:
       - TZ=${TZ}
