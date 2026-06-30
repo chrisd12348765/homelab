@@ -5,7 +5,23 @@ terraform {
       source  = "bpg/proxmox"
       version = "~> 0.66" # bpg provider — manages VMs, LXC, SDN, ACLs, users...
     }
+    tailscale = {
+      source  = "tailscale/tailscale"
+      version = "~> 0.17" # manages the tailnet ACL policy (see tailscale.tf)
+    }
   }
+}
+
+provider "tailscale" {
+  # OAuth client with the "Policy File: Write" scope (non-expiring, unlike a 90-day
+  # API token). Values arrive via SOPS-decrypted tfvars, same path as the proxmox creds.
+  # NOTE: do NOT set `scopes` here. Tailscale's granular-scope OAuth clients issue a
+  # client-credentials token carrying exactly the scopes the client was granted;
+  # explicitly requesting `scopes = ["acl"]` makes the token endpoint 403 with
+  # "OAuth client cannot grant scopes \"acl\"". Omitting it uses the token's own scopes.
+  oauth_client_id     = var.tailscale_oauth_client_id
+  oauth_client_secret = var.tailscale_oauth_client_secret
+  tailnet             = "-" # "-" = the OAuth client's own tailnet
 }
 
 provider "proxmox" {
