@@ -21,7 +21,7 @@ resource "proxmox_virtual_environment_container" "adguard" {
   }
 
   memory {
-    dedicated = 512
+    dedicated = 1024
     swap      = 256
   }
 
