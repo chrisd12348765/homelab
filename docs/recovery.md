@@ -126,6 +126,31 @@ encoded in the resources):
 3. **Core services** — `vaultwarden` (so secrets/passwords are reachable),
    then the rest (`obsidian`, `syncthing`, `immich`, dashboards, media).
 
+## PBS host recovery — the backup appliance itself
+
+**PBS runs on its own dedicated appliance host, entirely outside OpenTofu and
+Ansible's scope** — it's hand-provisioned (custom kernel, hand-built OS package),
+not a guest this repo can redeploy. Procedure B's "restore from PBS" steps have
+nothing to restore *from* until PBS itself exists again, so treat this as a
+prerequisite of Procedure B, not part of it.
+
+There is no automated path here — rebuild by hand:
+
+1. Reimage the appliance (fresh OS install) and reinstall PBS.
+2. Reattach the backup drive; re-import (or recreate) the datastore(s) pointing
+   at its existing mount so historical snapshots on the drive are recovered, not
+   lost — **the drive holds the actual backup history; the appliance's own OS
+   disk does not.**
+3. Recreate the PVE↔PBS API tokens and re-add the datastore to each Proxmox
+   node's storage config (`pvesm add pbs ...`).
+4. Re-add the Caddy vhost + zero-click SSO entry and the Homepage tile by
+   replicating the existing pattern for the other reverse-proxied services
+   (`ansible/roles/caddy/files/Caddyfile`, `services.enc.json`).
+
+The backup drive is the real single point of failure here, not the appliance
+itself — losing the appliance with the drive intact is a few hours of manual
+rebuild; losing the drive loses the backup history.
+
 ## Data restore
 
 - **PBS (primary):** restore a guest snapshot from the Proxmox Backup Server
@@ -157,5 +182,7 @@ serving, Vaultwarden unlock, Immich timeline loads, etc.).
 - [ ] Back up the age key off-machine (≥2 locations, not inside the homelab).
 - [ ] Back up `opentofu/terraform.tfstate` alongside the key.
 - [ ] Confirm PBS is running and its last verify job passed (`0 errors`).
+- [ ] Document/rehearse rebuilding the PBS appliance itself — it's outside
+      OpenTofu/Ansible so there's no automated path (see "PBS host recovery").
 - [ ] Extend the Ansible/Compose layer beyond Immich so Procedure A step 2
       covers every guest.
