@@ -7,3 +7,6 @@
 # the old pinned-binary-from-GitHub-releases install.
 docker_apt_arch: amd64
 docker_keyring_path: /etc/apt/keyrings/docker.asc
+# Set to false in a playbook's role invocation vars to keep a host on docker.io
+# instead (e.g. vpn-exit, whose killswitch blocks download.docker.com).
+docker_use_ce: true

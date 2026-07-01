@@ -2,63 +2,106 @@
 # roles/docker — install Docker CE (official apt repo) + Compose v2 plugin, enable
 # the service. Stack deployment lives in the per-app playbooks (e.g. playbooks/immich.yml).
 #
-# NOT used on vpn-exit: that host's PIA killswitch blocks all external apt mirrors,
-# so it can't reach download.docker.com either. It stays on docker.io — it doesn't
-# run any zstd-layer images, so it doesn't need this.
+# `docker_use_ce` (default true, see defaults/main.yml) gates the whole CE migration.
+# vpn-exit sets it to false in its playbook: that host's PIA killswitch blocks all
+# external apt mirrors, so it can't reach download.docker.com either. It stays on
+# docker.io — it doesn't run any zstd-layer images, so it doesn't need this.
 
-- name: Remove conflicting Debian docker packages
-  ansible.builtin.apt:
-    name:
-      - docker.io
-      - docker-doc
-      - docker-compose
-      - docker-compose-v2
-      - podman-docker
-      - containerd
-      - runc
-    state: absent
+- name: Migrate to Docker CE
+  when: docker_use_ce
+  block:
+    - name: Remove conflicting Debian docker packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-doc
+          - docker-compose
+          - docker-compose-v2
+          - podman-docker
+          - containerd
+          - runc
+        state: absent
 
-- name: Install prerequisites for the Docker apt repo
+    - name: Install prerequisites for the Docker apt repo
+      ansible.builtin.package:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Ensure apt keyrings dir
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add Docker's GPG key
+      ansible.builtin.get_url:
+        # Docker publishes separate per-distro repos/keys (debian vs ubuntu) —
+        # media-stack is Ubuntu ("noble"), everything else here is Debian
+        # ("bookworm"), so this can't be hardcoded to one distro.
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: "{{ docker_keyring_path }}"
+        mode: "0644"
+
+    - name: Add the Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ docker_apt_arch }} signed-by={{ docker_keyring_path }}]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }}
+          {{ ansible_distribution_release }} stable
+        filename: docker
+        state: present
+        update_cache: true
+
+    - name: Install Docker CE
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+  rescue:
+    # Removal happens before the new repo/install is confirmed working, so a
+    # failure here (unreachable repo, wrong distro codename, network blip)
+    # would otherwise leave the host with NO docker engine at all. Put
+    # docker.io back rather than leaving every container on the host down.
+    - name: Roll back to docker.io (Docker CE migration failed)
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Fail loudly after rollback so the migration failure isn't silent
+      ansible.builtin.fail:
+        msg: >-
+          Docker CE migration failed on {{ inventory_hostname }} and was rolled
+          back to docker.io. Check apt repo reachability (distro codename,
+          network) and re-run.
+
+- name: Check currently apt-marked holds
+  ansible.builtin.command: apt-mark showhold
+  register: docker_holds
+  changed_when: false
+  check_mode: false
+  when: docker_use_ce
+
+- name: Hold Docker CE packages at their installed version (reproducibility)
+  ansible.builtin.command: "apt-mark hold {{ item }}"
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+  when: docker_use_ce and item not in docker_holds.stdout_lines
+
+- name: Install Docker engine (docker.io, hosts excluded from the CE migration)
   ansible.builtin.package:
-    name:
-      - ca-certificates
-      - curl
+    name: docker.io
     state: present
-
-- name: Ensure apt keyrings dir
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: "0755"
-
-- name: Add Docker's GPG key
-  ansible.builtin.get_url:
-    # Docker publishes separate per-distro repos/keys (debian vs ubuntu) —
-    # media-stack is Ubuntu ("noble"), everything else here is Debian
-    # ("bookworm"), so this can't be hardcoded to one distro.
-    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
-    dest: "{{ docker_keyring_path }}"
-    mode: "0644"
-
-- name: Add the Docker apt repository
-  ansible.builtin.apt_repository:
-    repo: >-
-      deb [arch={{ docker_apt_arch }} signed-by={{ docker_keyring_path }}]
-      https://download.docker.com/linux/{{ ansible_distribution | lower }}
-      {{ ansible_distribution_release }} stable
-    filename: docker
-    state: present
-    update_cache: true
-
-- name: Install Docker CE
-  ansible.builtin.apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
-    state: present
+  when: not docker_use_ce
 
 - name: Ensure Docker is enabled and running
   ansible.builtin.service:
