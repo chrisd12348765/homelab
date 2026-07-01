@@ -1,0 +1,17 @@
+# Home Assistant (LXC 110, node01). Config lives in the bind-mounted
+# project dir, so the deploy stack_dir MUST stay /opt/home-assistant.
+# Bridge networking (not host) — Tuya local integration talks to fixed LAN
+# IPs/ports directly, no LAN-broadcast discovery needed.
+name: home-assistant
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: always
+    ports:
+      - "8123:8123"
+    volumes:
+      - /opt/home-assistant:/config
+    environment:
+      TZ: "${TZ}"
