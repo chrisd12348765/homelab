@@ -1,52 +1,64 @@
 ---
-# roles/docker — install Docker Engine + the Compose v2 plugin, enable the service.
-# Stack deployment lives in the per-app playbooks (e.g. playbooks/immich.yml).
+# roles/docker — install Docker CE (official apt repo) + Compose v2 plugin, enable
+# the service. Stack deployment lives in the per-app playbooks (e.g. playbooks/immich.yml).
 #
-# Compose v2 comes from the official plugin binary (not apt) so every host —
-# including Debian docker.io hosts with no Docker apt repo — gets `docker compose`.
+# NOT used on vpn-exit: that host's PIA killswitch blocks all external apt mirrors,
+# so it can't reach download.docker.com either. It stays on docker.io — it doesn't
+# run any zstd-layer images, so it doesn't need this.
 
-- name: Install Docker engine
+- name: Remove conflicting Debian docker packages
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-doc
+      - docker-compose
+      - docker-compose-v2
+      - podman-docker
+      - containerd
+      - runc
+    state: absent
+
+- name: Install prerequisites for the Docker apt repo
   ansible.builtin.package:
-    name: docker.io
+    name:
+      - ca-certificates
+      - curl
     state: present
 
-- name: Ensure docker cli-plugins dir
+- name: Ensure apt keyrings dir
   ansible.builtin.file:
-    path: "{{ docker_cli_plugins_dir }}"
+    path: /etc/apt/keyrings
     state: directory
     mode: "0755"
 
-- name: Check installed compose plugin version
-  ansible.builtin.command: docker compose version --short
-  register: docker_compose_installed
-  changed_when: false
-  failed_when: false
-  check_mode: false   # read-only; run in --check so the version guard is accurate
+- name: Add Docker's GPG key
+  ansible.builtin.get_url:
+    # Docker publishes separate per-distro repos/keys (debian vs ubuntu) —
+    # media-stack is Ubuntu ("noble"), everything else here is Debian
+    # ("bookworm"), so this can't be hardcoded to one distro.
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    dest: "{{ docker_keyring_path }}"
+    mode: "0644"
 
-- name: Cache Compose v2 plugin on the controller
-  delegate_to: localhost
-  become: false
-  vars:
-    ansible_python_interpreter: "{{ ansible_playbook_python }}"
-  block:
-    - name: Ensure controller cache dir
-      ansible.builtin.file:
-        path: "{{ docker_compose_cache_dir }}"
-        state: directory
-        mode: "0755"
-    - name: Download Compose v2 plugin to controller
-      ansible.builtin.get_url:
-        url: "{{ docker_compose_plugin_url }}"
-        dest: "{{ docker_compose_cache }}"
-        mode: "0755"
-  when: docker_compose_version | regex_replace('^v','') not in (docker_compose_installed.stdout | default(''))
+- name: Add the Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ docker_apt_arch }} signed-by={{ docker_keyring_path }}]
+      https://download.docker.com/linux/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+    update_cache: true
 
-- name: Install Compose v2 plugin from controller cache
-  ansible.builtin.copy:
-    src: "{{ docker_compose_cache }}"
-    dest: "{{ docker_cli_plugins_dir }}/docker-compose"
-    mode: "0755"
-  when: docker_compose_version | regex_replace('^v','') not in (docker_compose_installed.stdout | default(''))
+- name: Install Docker CE
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
 
 - name: Ensure Docker is enabled and running
   ansible.builtin.service:
