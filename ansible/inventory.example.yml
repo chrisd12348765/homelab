@@ -2,10 +2,30 @@
 # Reach nodes over Tailscale; group by role so plays target cleanly.
 all:
   children:
-    proxmox_nodes:
+    # Bare hosts (not Proxmox guests) running the dash-helpers disk-health
+    # endpoints — roles/disk_health, playbooks/disk_health.yml. Two Proxmox
+    # nodes' own boot disks + a standalone Pi doing backup/PBS duty; adjust
+    # disk_health_drives/disk_health_zpool per host's actual disks.
+    disk_health:
       hosts:
-        node01: { ansible_host: 100.64.0.11 }
-        node02: { ansible_host: 100.64.0.10 }
+        node01:
+          ansible_host: 100.64.0.11
+          disk_health_name: ssd-health
+          disk_health_port: 19922
+          disk_health_zpool: rpool   # omit entirely on hosts that aren't root-on-ZFS
+          disk_health_description: "SSD SMART + ZFS pool health endpoint for the Homepage dashboard."
+          disk_health_unit_description: "SSD SMART + ZFS pool health endpoint for Homepage dashboard"
+          disk_health_drives:
+            - { dev: sda, role: ssd, kind: sata }
+        node02:
+          ansible_host: 100.64.0.10
+          disk_health_name: hdd-health
+          disk_health_port: 19922
+          disk_health_description: "HDD/SSD SMART health endpoint for the Homepage dashboard."
+          disk_health_unit_description: "HDD SMART health endpoint for Homepage dashboard"
+          disk_health_drives:
+            - { dev: sda, role: media, kind: sata }
+            - { dev: nvme0n1, role: ssd, kind: nvme }
     docker_hosts:
       hosts:
         immich:      { ansible_host: 10.0.0.109 }
