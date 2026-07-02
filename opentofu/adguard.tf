@@ -7,7 +7,7 @@
 # /dev/net/tun — do not flip those without understanding the DNS/VPN setup.
 
 resource "proxmox_virtual_environment_container" "adguard" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 101
   unprivileged = false
 
@@ -26,7 +26,7 @@ resource "proxmox_virtual_environment_container" "adguard" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 16
   }
 

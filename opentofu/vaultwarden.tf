@@ -3,7 +3,7 @@
 # pinned vm_id, stripped provider-default noise).
 
 resource "proxmox_virtual_environment_container" "vaultwarden" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 100
   unprivileged = true
 
@@ -22,7 +22,7 @@ resource "proxmox_virtual_environment_container" "vaultwarden" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 12
   }
 

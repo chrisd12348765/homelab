@@ -5,7 +5,7 @@
 # NOTE: PRIVILEGED (unprivileged = false) — needed for the VPN tunnel device.
 
 resource "proxmox_virtual_environment_container" "vpn_exit" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 102
   unprivileged = false
 
@@ -24,7 +24,7 @@ resource "proxmox_virtual_environment_container" "vpn_exit" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 8
   }
 

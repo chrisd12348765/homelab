@@ -5,7 +5,7 @@
 # for a block deliberately NOT declared below — see the network_interface comment.
 
 resource "proxmox_virtual_environment_container" "home_assistant" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 110
   unprivileged = true
 
@@ -29,7 +29,7 @@ resource "proxmox_virtual_environment_container" "home_assistant" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 16
   }
 
@@ -84,6 +84,9 @@ resource "proxmox_virtual_environment_container" "home_assistant" {
   }
 
   lifecycle {
-    ignore_changes = [device_passthrough]
+    # operating_system: template_file_id is create-only and doesn't read back from
+    # the live container (same class of gotcha as media-stack.tf/agent.tf's vga
+    # ignore) — without this, every plan proposes a destroy+recreate of a live CT.
+    ignore_changes = [device_passthrough, operating_system]
   }
 }

@@ -4,7 +4,7 @@
 # cpu.units=0/limit=0; pinned vm_id; stripped provider-default noise).
 
 resource "proxmox_virtual_environment_container" "homarr" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 107
   unprivileged = true
 
@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_container" "homarr" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 8
   }
 

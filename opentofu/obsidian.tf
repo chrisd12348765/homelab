@@ -3,7 +3,7 @@
 # cpu.units=0/limit=0; pinned vm_id; stripped provider-default noise).
 
 resource "proxmox_virtual_environment_container" "obsidian" {
-  node_name    = "node01"
+  node_name    = "server"
   vm_id        = 103
   unprivileged = true
 
@@ -27,7 +27,7 @@ resource "proxmox_virtual_environment_container" "obsidian" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 20
   }
 
