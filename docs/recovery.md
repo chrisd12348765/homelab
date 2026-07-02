@@ -156,7 +156,7 @@ rebuild; losing the drive loses the backup history.
 **PBS's guest-level `vzdump` job (all VMs/CTs, nightly 02:30) does not cover the
 hypervisor hosts themselves.** A separate job, `pbs-host-backup.sh` (hand-installed
 to `/usr/local/sbin` on both `node01` and `node02`/`nas`, cron `/etc/cron.d/
-pbs-host-backup`, daily 01:00 — repo copy + the full design rationale in
+pbs-host-backup`, daily 02:00, alongside the guest vzdump job — repo copy + the full design rationale in
 `ansible/roles/proxmox_hosts/files/`), backs up each node's own OS-level config
 into PBS under a dedicated **`host-configs` namespace** on datastore `main`, one
 group per node (`host/node01`, `host/node02`), each written by its own
@@ -263,7 +263,7 @@ serving, Vaultwarden unlock, Immich timeline loads, etc.).
       restored clean (`PRAGMA integrity_check` → `ok`), `/etc/pve` and (on
       `nas`) `vendor-reset` confirmed absent from their respective archives.
       Still open: confirm the first *cron-triggered* (not manual) run on both
-      nodes at 01:00, and confirm the encryption key's off-host copy
+      nodes at 02:00, and confirm the encryption key's off-host copy
       (`pbs-host-backup-secrets.enc.json`) actually decrypts on a second
       machine.
 - [ ] Extend the Ansible/Compose layer beyond Immich so Procedure A step 2
