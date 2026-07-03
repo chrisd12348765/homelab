@@ -7,7 +7,7 @@
 # passthrough guest — do not shrink without understanding the Storage/agent setup.
 
 resource "proxmox_virtual_environment_vm" "agent" {
-  node_name = "node02"
+  node_name = "nas"
   vm_id     = 106
   name      = "agent"
 
@@ -46,7 +46,7 @@ resource "proxmox_virtual_environment_vm" "agent" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     interface    = "scsi0"
     size         = 256
     file_format  = "raw"
@@ -58,7 +58,7 @@ resource "proxmox_virtual_environment_vm" "agent" {
   }
 
   efi_disk {
-    datastore_id      = "local-lvm"
+    datastore_id      = "local-zfs"
     file_format       = "raw"
     type              = "4m"
     pre_enrolled_keys = true

@@ -7,7 +7,7 @@
 # exposes the ZFS array share into the guest (see Storage runbook).
 
 resource "proxmox_virtual_environment_vm" "media_stack" {
-  node_name = "node02"
+  node_name = "nas"
   vm_id     = 105
   name      = "media-stack"
 
@@ -44,7 +44,7 @@ resource "proxmox_virtual_environment_vm" "media_stack" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     interface    = "scsi0"
     size         = 256
     file_format  = "raw"
@@ -56,7 +56,7 @@ resource "proxmox_virtual_environment_vm" "media_stack" {
   }
 
   efi_disk {
-    datastore_id      = "local-lvm"
+    datastore_id      = "local-zfs"
     file_format       = "raw"
     type              = "4m"
     pre_enrolled_keys = true
