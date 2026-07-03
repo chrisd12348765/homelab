@@ -4,7 +4,7 @@
 # invalid defaults: cpu.units=0 and entrypoint="" were dropped; vm_id pinned).
 
 resource "proxmox_virtual_environment_container" "immich" {
-  node_name    = "node02"
+  node_name    = "nas"
   vm_id        = 109
   unprivileged = true
 
@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_container" "immich" {
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = "local-zfs"
     size         = 20
   }
 
