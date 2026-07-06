@@ -204,6 +204,30 @@ services:
       - ${MOVIES}:/data/movies
     restart: unless-stopped
 
+# ---------------- Janitorr (disk-based media cleanup) ----------------
+# Headless daemon (jvm-stable v2.1.x serves NO HTTP — no ports to publish). Status
+# on the dashboard comes from the caddy docker-health.json helper, not a siteMonitor.
+  janitorr:
+    image: ghcr.io/schaka/janitorr:jvm-stable
+    container_name: janitorr
+    networks: [ servarrnet ]
+    user: "${PUID}:${PGID}"
+    mem_limit: 512M          # heap is derived from this; 256M min, 512M for a large library
+    mem_swappiness: 0
+    environment:
+      - TZ=${TZ}
+      - SONARR_API_KEY=${SONARR_API_KEY}
+      - RADARR_API_KEY=${RADARR_API_KEY}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+      - JELLYFIN_USERNAME=${JELLYFIN_USERNAME}
+      - JELLYFIN_PASSWORD=${JELLYFIN_PASSWORD}
+      - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY}
+    volumes:
+      - ./janitorr/config/application.yml:/config/application.yml
+      - ./janitorr/logs:/logs
+      - /mnt/media:/data
+    restart: unless-stopped
+
 # ---------------- Soulseek (VPN) ----------------
   slskd:
     image: slskd/slskd:latest

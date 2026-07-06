@@ -1,0 +1,67 @@
+# jvm-stable (v2.1.x) is a headless scheduler — it starts no web server, so there's
+# nothing to expose (no server.port / actuator). Dashboard status is derived from the
+# container's docker state via caddy's docker-health.json helper.
+logging:
+  level:
+    com.github.schaka: INFO
+
+file-system:
+  access: true
+  validate-seeding: true
+  from-scratch: false
+  free-space-check-dir: "/data"
+  leaving-soon-dir: "/data/leaving-soon"
+  media-server-leaving-soon-dir: "/data/leaving-soon"
+
+application:
+  dry-run: false           # verified end-to-end in dry-run (connects to all *arrs/Jellyfin, reads free space, honors seeding); now live. Deletes nothing until free space < 8%.
+  run-once: false
+  whole-tv-show: false
+  leaving-soon: 2d         # MUST stay < the smallest expiration below (guard: leaving-soon >= expiration aborts the run)
+  leaving-soon-threshold-offset-percent: 2
+  exclusion-tags:
+    - "janitorr_keep"
+  media-deletion:
+    enabled: true
+    # keys = % FREE disk. Nothing is deleted while free space >= 8% (~660GB on the 8.3TB array).
+    # The lower free space drops, the shorter the expiration (more aggressive).
+    movie-expiration:
+      8: 90d
+      5: 30d
+      3: 14d
+      2: 7d
+    season-expiration:
+      8: 90d
+      5: 30d
+      3: 14d
+      2: 7d
+  tag-based-deletion:
+    enabled: false
+  episode-deletion:
+    enabled: false
+
+clients:
+  sonarr:
+    enabled: true
+    url: "http://sonarr:8989"
+    api-key: "${SONARR_API_KEY}"
+    delete-empty-shows: true
+  radarr:
+    enabled: true
+    url: "http://radarr:7878"
+    api-key: "${RADARR_API_KEY}"
+  jellyfin:
+    enabled: true
+    url: "http://jellyfin:8096"
+    api-key: "${JELLYFIN_API_KEY}"
+    username: "${JELLYFIN_USERNAME}"
+    password: "${JELLYFIN_PASSWORD}"
+    delete: true
+    exclude-favorited: true
+    leaving-soon-type: NONE
+  jellyseerr:
+    enabled: true
+    url: "http://seerr:5055"
+    api-key: "${JELLYSEERR_API_KEY}"
+  bazarr:
+    enabled: false
