@@ -187,6 +187,23 @@ services:
       - ${MUSIC}:/data/music
     restart: unless-stopped
 
+# ---------------- Bazarr (subtitles) ----------------
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    networks: [ servarrnet ]
+    ports:
+      - "6767:6767"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./bazarr:/config
+      - ${TV}:/data/tv
+      - ${MOVIES}:/data/movies
+    restart: unless-stopped
+
 # ---------------- Soulseek (VPN) ----------------
   slskd:
     image: slskd/slskd:latest
