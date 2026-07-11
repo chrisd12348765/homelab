@@ -5,6 +5,10 @@ networks:
       config:
         - subnet: 172.23.0.0/24
 
+volumes:
+  jellystat-postgres-data:
+  jellystat-backup-data:
+
 services:
 
 # ---------------- VPN ----------------
@@ -204,6 +208,41 @@ services:
       - ${MOVIES}:/data/movies
     restart: unless-stopped
 
+# ---------------- Jellystat (Jellyfin watch statistics) ----------------
+# Records Jellyfin playback history in its own Postgres DB. Janitorr reads it so
+# that media age = last-watched date rather than import date (see
+# LibraryItem.historyAge), making disk-based cleanup least-recently-watched.
+  jellystat-db:
+    image: postgres:18.1
+    container_name: jellystat-db
+    networks: [ servarrnet ]
+    environment:
+      - POSTGRES_USER=${JELLYSTAT_DB_USER}
+      - POSTGRES_PASSWORD=${JELLYSTAT_DB_PASSWORD}
+      - TZ=${TZ}
+    volumes:
+      - jellystat-postgres-data:/var/lib/postgresql
+    restart: unless-stopped
+
+  jellystat:
+    image: cyfershepard/jellystat:latest
+    container_name: jellystat
+    networks: [ servarrnet ]
+    ports:
+      - "3000:3000"
+    depends_on:
+      - jellystat-db
+    environment:
+      - POSTGRES_USER=${JELLYSTAT_DB_USER}
+      - POSTGRES_PASSWORD=${JELLYSTAT_DB_PASSWORD}
+      - POSTGRES_IP=jellystat-db
+      - POSTGRES_PORT=5432
+      - JWT_SECRET=${JELLYSTAT_JWT_SECRET}
+      - TZ=${TZ}
+    volumes:
+      - jellystat-backup-data:/app/backend/backup-data
+    restart: unless-stopped
+
 # ---------------- Janitorr (disk-based media cleanup) ----------------
 # Headless daemon (jvm-stable v2.1.x serves NO HTTP — no ports to publish). Status
 # on the dashboard comes from the caddy docker-health.json helper, not a siteMonitor.
@@ -222,6 +261,7 @@ services:
       - JELLYFIN_USERNAME=${JELLYFIN_USERNAME}
       - JELLYFIN_PASSWORD=${JELLYFIN_PASSWORD}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY}
+      - JELLYSTAT_API_KEY=${JELLYSTAT_API_KEY}
     volumes:
       - ./janitorr/config/application.yml:/config/application.yml
       - ./janitorr/logs:/logs

@@ -14,7 +14,7 @@ file-system:
   media-server-leaving-soon-dir: "/data/leaving-soon"
 
 application:
-  dry-run: false           # verified end-to-end in dry-run (connects to all *arrs/Jellyfin, reads free space, honors seeding); now live. Deletes nothing until free space < 8%.
+  dry-run: false           # verified end-to-end in dry-run (connects to all *arrs/Jellyfin, reads free space, honors seeding); now live. Deletes nothing until free space < 5%.
   run-once: false
   whole-tv-show: false
   leaving-soon: 2d         # MUST stay < the smallest expiration below (guard: leaving-soon >= expiration aborts the run)
@@ -23,18 +23,18 @@ application:
     - "janitorr_keep"
   media-deletion:
     enabled: true
-    # keys = % FREE disk. Nothing is deleted while free space >= 8% (~660GB on the 8.3TB array).
+    # keys = % FREE disk. Nothing is deleted while free space >= 5% (~450GB on the 8.3TB array).
     # The lower free space drops, the shorter the expiration (more aggressive).
     movie-expiration:
-      8: 90d
-      5: 30d
-      3: 14d
-      2: 7d
+      5: 90d
+      3: 30d
+      2: 14d
+      1: 7d
     season-expiration:
-      8: 90d
-      5: 30d
-      3: 14d
-      2: 7d
+      5: 90d
+      3: 30d
+      2: 14d
+      1: 7d
   tag-based-deletion:
     enabled: false
   episode-deletion:
@@ -63,5 +63,13 @@ clients:
     enabled: true
     url: "http://seerr:5055"
     api-key: "${JELLYSEERR_API_KEY}"
+  # Watch history source. Without this, LibraryItem.historyAge falls back to the *arr
+  # import date, so cleanup would delete oldest-DOWNLOADED rather than least-recently-WATCHED.
+  # A play by ANY Jellyfin user counts (Janitorr takes the max play date, ignoring who).
+  jellystat:
+    enabled: true
+    whole-tv-show: true    # look up history per SHOW, not per season: one watched episode protects the whole series (deletion is still per-season)
+    url: "http://jellystat:3000"
+    api-key: "${JELLYSTAT_API_KEY}"
   bazarr:
     enabled: false
