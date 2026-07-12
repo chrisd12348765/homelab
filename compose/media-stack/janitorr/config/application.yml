@@ -23,18 +23,20 @@ application:
     - "janitorr_keep"
   media-deletion:
     enabled: true
-    # keys = % FREE disk. Nothing is deleted while free space >= 5% (~450GB on the 8.3TB array).
+    # keys = % FREE disk (array is 9.0TB, so 1% ~= 90GB). Nothing is deleted while free space >= 5% (~450GB).
     # The lower free space drops, the shorter the expiration (more aggressive).
+    # 2% (~180GB) is the emergency floor: the hourly run must be able to outpace
+    # qbittorrent write speed, or free space can hit 0 between two runs.
     movie-expiration:
       5: 90d
-      3: 30d
-      2: 14d
-      1: 7d
+      4: 30d
+      3: 14d
+      2: 7d
     season-expiration:
       5: 90d
-      3: 30d
-      2: 14d
-      1: 7d
+      4: 30d
+      3: 14d
+      2: 7d
   tag-based-deletion:
     enabled: false
   episode-deletion:

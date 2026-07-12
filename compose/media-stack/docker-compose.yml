@@ -222,6 +222,14 @@ services:
       - TZ=${TZ}
     volumes:
       - jellystat-postgres-data:/var/lib/postgresql
+    healthcheck:
+      # POSTGRES_USER (not JELLYSTAT_DB_USER) is what exists inside this container.
+      # Omit -d: jfstat doesn't exist until Jellystat creates it on first boot.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   jellystat:
@@ -231,7 +239,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - jellystat-db
+      jellystat-db:
+        condition: service_healthy
     environment:
       - POSTGRES_USER=${JELLYSTAT_DB_USER}
       - POSTGRES_PASSWORD=${JELLYSTAT_DB_PASSWORD}
@@ -239,6 +248,12 @@ services:
       - POSTGRES_PORT=5432
       - JWT_SECRET=${JELLYSTAT_JWT_SECRET}
       - TZ=${TZ}
+      # Declarative admin login (backend/routes/auth.js): JS_USER/JS_PASSWORD are
+      # compared against a SHA3 hash computed at login time, so these SOPS values
+      # are the real, rotatable credential and survive a DB rebuild. The DB-backed
+      # admin user is still required (app_config.APP_USER must be non-null).
+      - JS_USER=${JELLYSTAT_ADMIN_USER}
+      - JS_PASSWORD=${JELLYSTAT_ADMIN_PASSWORD}
     volumes:
       - jellystat-backup-data:/app/backend/backup-data
     restart: unless-stopped
@@ -251,8 +266,13 @@ services:
     container_name: janitorr
     networks: [ servarrnet ]
     user: "${PUID}:${PGID}"
-    mem_limit: 512M          # heap is derived from this; 256M min, 512M for a large library
+    mem_limit: 1G            # heap is derived from this; 256M min, 512M for a large library, +512M
+                             # headroom for deserializing Jellystat's getItemHistory responses
+                             # (JAVA_TOOL_OPTIONS sets -XX:+ExitOnOutOfMemoryError)
     mem_swappiness: 0
+    depends_on:
+      jellystat:
+        condition: service_healthy
     environment:
       - TZ=${TZ}
       - SONARR_API_KEY=${SONARR_API_KEY}
@@ -266,6 +286,28 @@ services:
       - ./janitorr/config/application.yml:/config/application.yml
       - ./janitorr/logs:/logs
       - /mnt/media:/data
+    restart: unless-stopped
+
+# ---------------- Janitorr Stats Guard ----------------
+# Fail-closed guard: an empty (but reachable) Jellystat history is indistinguishable
+# from "nothing was ever watched", so Janitorr would fall back to deleting by
+# importedDate instead of last-watched date. Stops janitorr when Jellystat's
+# history table is too thin, rather than letting it silently delete recently-watched media.
+  janitorr-guard:
+    image: docker:cli
+    container_name: janitorr-guard
+    network_mode: none
+    depends_on:
+      - jellystat-db
+    environment:
+      - TZ=${TZ}
+      - POLL_SECONDS=300
+      - MIN_HISTORY_ROWS=50
+      - JELLYSTAT_DB_USER=${JELLYSTAT_DB_USER}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./scripts/janitorr_stats_guard.sh:/app/janitorr_stats_guard.sh:ro
+    command: ["sh", "/app/janitorr_stats_guard.sh"]
     restart: unless-stopped
 
 # ---------------- Soulseek (VPN) ----------------
