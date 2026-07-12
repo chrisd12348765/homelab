@@ -33,7 +33,7 @@ all:
         obsidian:    { ansible_host: 10.0.0.103 }
         media-stack: { ansible_host: 10.0.0.105 }
         agent:       { ansible_host: 10.0.0.106 }
-        homepage:    { ansible_host: 10.0.0.107 }   # Homepage; guest named "homarr"
+        homepage:    { ansible_host: 10.0.0.107 }   # Homepage dashboard
         vpn-exit:    { ansible_host: 10.0.0.102 }   # PIA WireGuard exit (compose)
     native_hosts:
       hosts:

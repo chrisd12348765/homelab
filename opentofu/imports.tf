@@ -10,12 +10,12 @@
 # Live inventory (pulled 2026-06-25):
 #   node02:          105 media-stack(qemu) 106 agent(qemu) 109 immich(lxc)
 #   node01: 100 vaultwarden 101 adguard 102 vpn-exit 103 obsidian
-#                  104 caddy 107 homarr 108 syncthing  (all lxc)
+#                  104 caddy 107 homepage 108 syncthing  (all lxc)
 
 # --- DONE: every guest imported + adopted into state (import blocks removed after
 #     adoption; each resource lives in its own <name>.tf):
 #       node01 LXCs: vaultwarden/100, adguard/101, vpn-exit/102, obsidian/103,
-#                           caddy/104, homarr/107, syncthing/108
+#                           caddy/104, homepage/107, syncthing/108
 #       node02:               media-stack/105 (qemu), agent/106 (qemu), immich/109 (lxc)
 #     Whole cluster is now under IaC management — `tofu plan` == "No changes".
 #

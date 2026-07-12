@@ -1,9 +1,17 @@
-# homarr.tf — LXC 107 on node01 (legacy dashboard; superseded by Homepage
-# on CT 107 per Dashboard runbook — kept until decommissioned).
+# homepage.tf — LXC 107 on node01. Runs the Homepage (gethomepage.dev)
+# dashboard served at dash.example.com; see roles/homepage.
 # Retrofitted via generate-config-out, hand-cleaned (dropped invalid entrypoint="",
 # cpu.units=0/limit=0; pinned vm_id; stripped provider-default noise).
 
-resource "proxmox_virtual_environment_container" "homarr" {
+# The guest was called "homarr" until 2026-07-12 (it once ran Homarr). Renamed in
+# Proxmox with `pct set 107 --hostname homepage`, not by tofu: `initialization` is
+# in ignore_changes below, so the hostname here is a record, not the actuator.
+moved {
+  from = proxmox_virtual_environment_container.homarr
+  to   = proxmox_virtual_environment_container.homepage
+}
+
+resource "proxmox_virtual_environment_container" "homepage" {
   node_name    = "server"
   vm_id        = 107
   unprivileged = true
@@ -44,7 +52,7 @@ resource "proxmox_virtual_environment_container" "homarr" {
   }
 
   initialization {
-    hostname = "homarr"
+    hostname = "homepage"
     ip_config {
       ipv4 {
         address = "10.0.0.8/24"
