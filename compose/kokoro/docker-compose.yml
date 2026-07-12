@@ -1,0 +1,11 @@
+# Kokoro-FastAPI (Kokoro-82M TTS, OpenAI-compatible /v1/audio/speech) on the
+# agent host. CPU/ONNX only -- the RX 6600 XT's 8 GB is fully budgeted for
+# LLMs + whisper STT, so this stack does NOT touch the GPU.
+# No secrets needed; there is no .env for this stack (see kokoro.yml).
+services:
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.5.0
+    container_name: kokoro
+    restart: unless-stopped
+    ports:
+      - "9494:8880"

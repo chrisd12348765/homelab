@@ -4,11 +4,14 @@
 # The caller sets:
 #   stack_dir   absolute dir on the host where the stack lives (data may be bind-
 #               mounted here, so it must match the existing deployment exactly)
-#   compose_src dir in this repo holding docker-compose.yml + the SOPS env
-#   enc_env     filename of the SOPS-encrypted env inside compose_src
+#   compose_src dir in this repo holding docker-compose.yml (+ the SOPS env, if any)
+#   enc_env     OPTIONAL filename of the SOPS-encrypted env inside compose_src.
+#               Omit entirely for a stack that genuinely has no secrets -- the
+#               .env render task below is skipped rather than requiring a fake
+#               encrypted file just to satisfy this role.
 #
-# The .env is decrypted ON THE CONTROLLER via community.sops (the age key never
-# leaves the workstation), then written to the host as a 0600 .env.
+# When set, the .env is decrypted ON THE CONTROLLER via community.sops (the age
+# key never leaves the workstation), then written to the host as a 0600 .env.
 
 - name: Create stack directory
   ansible.builtin.file:
@@ -22,6 +25,7 @@
     dest: "{{ stack_dir }}/.env"
     mode: "0600"
   no_log: true   # don't echo secrets into Ansible output
+  when: enc_env is defined
 
 - name: Copy compose file
   ansible.builtin.copy:

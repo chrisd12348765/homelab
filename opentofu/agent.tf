@@ -34,7 +34,7 @@ resource "proxmox_virtual_environment_vm" "agent" {
   }
 
   memory {
-    dedicated = 8192
+    dedicated = 10240
   }
 
   network_device {

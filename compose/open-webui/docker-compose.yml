@@ -12,9 +12,31 @@ services:
     ports:
       - "${OPEN_WEBUI_PORT:-3000}:8080"
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OPENAI_API_BASE_URL=https://api.minimax.chat/v1
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # ollama is gone from this host -- disable the Ollama API entirely.
+      - ENABLE_OLLAMA_API=false
+      # Plural (list) vars: llama-swap (local) + MiniMax, semicolon-separated,
+      # positions line up between URLs and keys. MiniMax keeps its real key
+      # from open-webui.enc.env; llama-swap needs no auth, so it gets a dummy.
+      - OPENAI_API_BASE_URLS=https://api.minimax.chat/v1;http://host.docker.internal:9292/v1
+      - OPENAI_API_KEYS=${OPENAI_API_KEY};sk-local-llama-swap
+      # STT -> whisper-server (OpenAI-compatible, no auth)
+      - AUDIO_STT_ENGINE=openai
+      - AUDIO_STT_OPENAI_API_BASE_URL=http://host.docker.internal:9393/v1
+      - AUDIO_STT_OPENAI_API_KEY=sk-local-whisper
+      # TTS -> Kokoro (OpenAI-compatible, no auth)
+      - AUDIO_TTS_ENGINE=openai
+      - AUDIO_TTS_OPENAI_API_BASE_URL=http://host.docker.internal:9494/v1
+      - AUDIO_TTS_OPENAI_API_KEY=sk-local-kokoro
+      - AUDIO_TTS_MODEL=kokoro
+      - AUDIO_TTS_VOICE=af_heart
+      # RAG embeddings -> llama-swap's embeddinggemma
+      - RAG_EMBEDDING_ENGINE=openai
+      - RAG_EMBEDDING_MODEL=embeddinggemma
+      - RAG_OPENAI_API_BASE_URL=http://host.docker.internal:9292/v1
+      - RAG_OPENAI_API_KEY=sk-local-llama-swap
+      # Task model (title/tag generation) -> fast local model, arrives over the
+      # OpenAI connection so it's "external" from OpenWebUI's point of view.
+      - TASK_MODEL_EXTERNAL=qwen3-0.6b
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
