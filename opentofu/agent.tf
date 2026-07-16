@@ -3,8 +3,12 @@
 # generator's invalid empty-string enums (cpu.architecture="", memory.hugepages="",
 # vga.type="") and operation-timeout / default noise. Hardware blocks kept faithful.
 #
-# NOTE: hostpci0 = full GPU passthrough (xvga). Memory is pinned/reserved for the
-# passthrough guest — do not shrink without understanding the Storage/agent setup.
+# NOTE: hostpci0 = full GPU passthrough (xvga), so memory is a pinned/static host-RAM
+# reservation (balloon can't reclaim it). Sized 8192 since 2026-07: Open WebUI moved to
+# CT 111 (openwebui, on server); Kokoro (~1.1 GiB) stayed here after the N5105 failed
+# its TTS benchmark (RTF ~2.8). LLM weights live in VRAM, not RAM (llama-server host
+# RSS ~1 GiB with bonsai-27b loaded), so 8 GiB holds the stack with ~5 GiB page cache
+# for the ggufs. A memory change needs a full VM stop/start (passthrough, balloon=0).
 
 resource "proxmox_virtual_environment_vm" "agent" {
   node_name = "nas"
@@ -34,7 +38,7 @@ resource "proxmox_virtual_environment_vm" "agent" {
   }
 
   memory {
-    dedicated = 10240
+    dedicated = 8192
   }
 
   network_device {
