@@ -13,5 +13,15 @@ services:
       - "8123:8123"
     volumes:
       - /opt/home-assistant:/config
+    # Zigbee radio (Sonoff ZBDongle-P V2, CC2652P). Passed host -> LXC 110 live
+    # via `pct set 110 -dev1 /dev/ttyUSB0` (see home-assistant.tf), then mapped
+    # LXC -> container here. NOTE: must be /dev/ttyUSB0 on BOTH sides. In an
+    # unprivileged LXC, Docker/runc can't mknod the device node and falls back to
+    # bind-mounting the container-path from the LXC's own /dev — so the container
+    # path has to exist inside the LXC (a by-id node there does NOT satisfy a
+    # /dev/ttyUSB0 container path; the recreate fails with "no such file or
+    # directory"). Single USB serial device, so ttyUSB0 is stable in practice.
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
     environment:
       TZ: "${TZ}"

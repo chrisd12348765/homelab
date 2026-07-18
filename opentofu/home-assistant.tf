@@ -45,6 +45,18 @@ resource "proxmox_virtual_environment_container" "home_assistant" {
   # itself (403) — applied live via `pct set 110 -dev0 /dev/net/tun,mode=0660,
   # uid=0,gid=0` as true root on the node instead.
   #
+  # dev1 = the Zigbee radio: a Sonoff Zigbee 3.0 USB Dongle Plus V2 (CC2652P,
+  # ZHA radio type `znp`), passed through the same live way for the same reason:
+  #   pct set 110 -dev1 /dev/ttyUSB0,mode=0660,uid=0,gid=0
+  # Must be the /dev/ttyUSB0 host path (NOT the by-id path): Docker/runc in an
+  # unprivileged LXC bind-mounts the container device path from the LXC's own
+  # /dev, so /dev/ttyUSB0 has to exist inside the CT — a by-id node there does not
+  # satisfy a /dev/ttyUSB0 container mapping (compose recreate fails "no such file
+  # or directory"). Single USB serial device, so ttyUSB0 is stable in practice.
+  # The dongle's stable serial-id, for reference, is:
+  #   usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_703029d18678f011b388ace70ba521c7-if00-port0
+  # A from-scratch DR rebuild must re-run this pct set by hand.
+  #
   # Deliberately NOT declared as a `device_passthrough` block here: an
   # ignore_changes entry only suppresses diffs on UPDATE, not on CREATE — a
   # from-scratch apply (disaster recovery, or a forced replace) would still
