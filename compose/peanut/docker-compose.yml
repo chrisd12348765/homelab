@@ -1,0 +1,32 @@
+# PeaNUT — web dashboard for the APC Back-UPS Pro 1500S, reading the NUT master
+# on the Pi over the LAN (upsd, port 3493). Runs on the homepage LXC (107), which
+# already hosts Docker, rather than adding a Docker engine to the Pi just for a UI.
+#
+# NUT_HOST/NUT_PORT are the documented backwards-compatible seed for the
+# NUT_SERVERS list PeaNUT otherwise expects in /config/settings.yml; they are
+# applied on every start, so the server entry survives a wiped config volume.
+# No NUT credentials are passed on purpose: reading variables from upsd is
+# anonymous, and withholding the admin login keeps the dashboard read-only so a
+# stray click here can never issue an FSD to the whole cluster.
+#
+# All four values come from .env, rendered from peanut.enc.env (SOPS) at deploy
+# time — the LAN address of the master is kept out of the public mirror too.
+name: peanut
+
+services:
+  peanut:
+    image: brandawg93/peanut:latest
+    container_name: peanut
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - WEB_PORT=8080
+      - NUT_HOST=${NUT_HOST}
+      - NUT_PORT=${NUT_PORT}
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}
+    volumes:
+      # PeaNUT runs as UID/GID 1000 and must be able to write settings.yml here,
+      # so the playbook pre-creates this directory with that ownership.
+      - ./config:/config
