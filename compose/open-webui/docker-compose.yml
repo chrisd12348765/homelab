@@ -16,11 +16,10 @@ services:
     environment:
       # ollama is gone from this host -- disable the Ollama API entirely.
       - ENABLE_OLLAMA_API=false
-      # Plural (list) vars: llama-swap (local) + MiniMax, semicolon-separated,
-      # positions line up between URLs and keys. MiniMax keeps its real key
-      # from open-webui.enc.env; llama-swap needs no auth, so it gets a dummy.
-      - OPENAI_API_BASE_URLS=https://api.minimax.chat/v1;http://100.64.0.10:9292/v1
-      - OPENAI_API_KEYS=${OPENAI_API_KEY};sk-local-llama-swap
+      # Local llama-swap needs no authentication, but Open WebUI still expects
+      # a position-matched placeholder key for OpenAI-compatible connections.
+      - OPENAI_API_BASE_URLS=http://100.64.0.10:9292/v1
+      - OPENAI_API_KEYS=sk-local-llama-swap
       # STT -> whisper via llama-swap over the tailnet (OpenAI-compatible, no
       # auth). There is no standalone whisper-server on :9393 anymore.
       - AUDIO_STT_ENGINE=openai
