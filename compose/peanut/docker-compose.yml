@@ -3,8 +3,10 @@
 # already hosts Docker, rather than adding a Docker engine to the Pi just for a UI.
 #
 # NUT_HOST/NUT_PORT are the documented backwards-compatible seed for the
-# NUT_SERVERS list PeaNUT otherwise expects in /config/settings.yml; they are
-# applied on every start, so the server entry survives a wiped config volume.
+# NUT_SERVERS list PeaNUT otherwise expects in /config/settings.yml. They are a
+# SEED ONLY: once settings.yml exists, its NUT_SERVERS entry wins and these are
+# ignored, so changing them here does NOT repoint a running deployment. The
+# peanut playbook reconciles the persisted HOST for that reason.
 # No NUT credentials are passed on purpose: reading variables from upsd is
 # anonymous, and withholding the admin login keeps the dashboard read-only so a
 # stray click here can never issue an FSD to the whole cluster.
