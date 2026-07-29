@@ -10,3 +10,16 @@ docker_keyring_path: /etc/apt/keyrings/docker.asc
 # Set to false in a playbook's role invocation vars to keep a host on docker.io
 # instead (e.g. vpn-exit, whose killswitch blocks download.docker.com).
 docker_use_ce: true
+
+# Docker CE used to be pinned (apt-mark hold) for reproducibility. That froze
+# the engine out of the weekly update event entirely — every guest sat on
+# 29.6.1 while 29.6.2 shipped, so the one package that can leave a host with
+# no working Docker was also the only one never getting security fixes. The
+# weekly guests phase now upgrades it under the same pre/post running-container
+# health check and the media-server VPN killswitch verify that cover every
+# other package, so the hold is no longer the default.
+# Set true in a host's host_vars to pin that one host deliberately — that's
+# the supported way to freeze the engine now. A manual `apt-mark hold` on the
+# host would get silently released the next time this role runs; this var is
+# what the role actually enforces, in both directions.
+docker_ce_pin: false
