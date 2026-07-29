@@ -85,17 +85,23 @@
   register: docker_holds
   changed_when: false
   check_mode: false
-  when: docker_use_ce
 
-- name: Hold Docker CE packages at their installed version (reproducibility)
-  ansible.builtin.command: "apt-mark hold {{ item }}"
+# Docker CE used to be pinned here for reproducibility. That froze the engine
+# out of the weekly update event entirely (every guest sat on 29.6.1 while
+# 29.6.2 shipped), so the one package that can leave a host with no working
+# Docker was also the only one that never got security fixes. The weekly guests
+# phase now upgrades it like anything else, landing BEFORE the docker image
+# stage in the same run — so the existing pre/post running-container health
+# check and the media-server VPN killswitch verify both cover the fallout.
+- name: Release Docker CE apt holds (engine now rides the weekly update event)
+  ansible.builtin.command: "apt-mark unhold {{ item }}"
   loop:
     - docker-ce
     - docker-ce-cli
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
-  when: docker_use_ce and item not in docker_holds.stdout_lines
+  when: item in docker_holds.stdout_lines
 
 - name: Install Docker engine (docker.io, hosts excluded from the CE migration)
   ansible.builtin.package:
