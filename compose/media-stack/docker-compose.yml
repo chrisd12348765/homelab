@@ -516,3 +516,65 @@ services:
       - ./komga:/config
       - ${MANGA}:/data
     restart: unless-stopped
+
+# ---------------- Audiobookshelf (audiobook library server) ----------------
+# Serves /mnt/media/audiobooks to phones/browsers (web player + progress sync).
+# NOT behind pia-tun: it's a library server, not a torrent client — same posture
+# as jellyfin/komga. The official image dropped AUDIOBOOKSHELF_UID/GID (v2.6+),
+# so ownership comes from docker `user:` (komga precedent, above). Real built-in
+# auth: the root account is claimed at first run (data, not repo). The library
+# folder watcher is inotify/event-driven, so it is NOT a registrable schedule;
+# the in-app daily backup IS (schedules/homelab.yaml: audiobookshelf-daily-backup).
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    networks: [ servarrnet ]
+    user: "${PUID}:${PGID}"
+    ports:
+      - "13378:80"
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./audiobookshelf/config:/config
+      - ./audiobookshelf/metadata:/metadata
+      - ${AUDIOBOOKS}:/audiobooks
+    restart: unless-stopped
+
+# ---------------- LazyLibrarian (audiobook acquisition manager) ----------------
+# Wishlist -> search -> grab -> post-process for audiobooks (Readarr is retired).
+# NOT behind pia-tun: it's an automation manager like sonarr/radarr — only the
+# torrent transport (qbittorrent) rides the VPN. It talks to qbit at
+# http://gluetun:8080 and Prowlarr at http://prowlarr:9696 over servarrnet.
+#
+# RATIO SAFETY (IPTorrents 1.0 obligation) — post-processing must COPY, never
+# move, or the seeding torrent loses its files. This is enforced by
+# `destination_copy = True` in LL's config.ini (live-managed, in-app setting),
+# backed up by KEEP_SEEDING=1 so LL never removes the torrent.
+#
+# The downloads mount was originally :ro as a second, physical guarantee, but LL
+# cannot post-process at all against a read-only download tree — it creates
+# `<name>.unpack` working dirs and an `ll_temp` scratch dir *inside* it, and
+# fails with EROFS ("Unable to create directory ... .unpack") before ever
+# copying anything. So it is rw, and destination_copy is the guarantee.
+# The mount uses the same container path as qbittorrent (/data/downloads) so LL
+# sees the exact paths qbit reports — no path mapping needed.
+#
+# The linuxserver image ships no auth envs; LL's own web username/password is a
+# mandatory in-app post-deploy step (suwayomi precedent: no unprotected UIs).
+# Wanted-search interval is a live config.ini setting
+# (schedules/homelab.yaml: lazylibrarian-wanted-search).
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    container_name: lazylibrarian
+    networks: [ servarrnet ]
+    ports:
+      - "5299:5299"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./lazylibrarian:/config
+      - ${DL}:/data/downloads
+      - ${AUDIOBOOKS}:/audiobooks
+    restart: unless-stopped
