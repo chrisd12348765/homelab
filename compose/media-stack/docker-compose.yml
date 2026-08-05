@@ -467,3 +467,52 @@ services:
       - ./sonarr:/config/sonarr:ro
       - ./radarr:/config/radarr:ro
     restart: unless-stopped
+
+# ---------------- Suwayomi (manga downloader) ----------------
+# Tachiyomi-compatible source browser/downloader. Writes chapters as CBZ onto the
+# array (${MANGA}) where Komga picks them up. Not behind pia-tun — same posture as
+# metube/flaresolverr (public-site scraping, not torrenting). Basic auth enabled
+# because it ships with none. Global library update every 12h (registered in
+# schedules/homelab.yaml as suwayomi-global-update).
+  suwayomi:
+    image: ghcr.io/suwayomi/suwayomi-server:stable
+    container_name: suwayomi
+    networks: [ servarrnet ]
+    ports:
+      - "4567:4567"
+    environment:
+      - TZ=${TZ}
+      - DOWNLOAD_AS_CBZ=true
+      - AUTO_DOWNLOAD_CHAPTERS=true
+      - UPDATE_INTERVAL=12
+      - AUTH_MODE=basic_auth
+      - AUTH_USERNAME=${SUWAYOMI_USER}
+      - AUTH_PASSWORD=${SUWAYOMI_PASS}
+      - FLARESOLVERR_ENABLED=true
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      # NOTE: the extension repo (Keiyoushi) is NOT env-configurable on this image —
+      # it's an in-app "extension store" (DB/data, added via GraphQL addExtensionStore).
+    volumes:
+      - ./suwayomi:/home/suwayomi/.local/share/Tachidesk
+      - ${MANGA}:/home/suwayomi/.local/share/Tachidesk/downloads
+    restart: unless-stopped
+
+# ---------------- Komga (manga library server) ----------------
+# Serves /mnt/media/manga to the iPad (web reader + OPDS-PSE for apps like Panels).
+# Komga takes docker `user:` instead of PUID env. First-run admin account is
+# claimed in the web UI (data, not repo). Library scan interval is a per-library
+# UI setting (registered in schedules/homelab.yaml as komga-library-scan).
+  komga:
+    image: gotson/komga:latest
+    container_name: komga
+    networks: [ servarrnet ]
+    user: "${PUID}:${PGID}"
+    mem_limit: 1G            # JVM app; same rationale as janitorr
+    ports:
+      - "25600:25600"
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./komga:/config
+      - ${MANGA}:/data
+    restart: unless-stopped
