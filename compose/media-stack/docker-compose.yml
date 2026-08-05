@@ -410,6 +410,13 @@ services:
   autobrr:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
+    # The autobrr binary IS pid 1 here and never wait()s on orphans. Its external-filter
+    # exec (autobrr_duplicate_guard.sh) shells out to busybox `timeout`, which forks a
+    # watchdog child that outlives its own parent -> reparented to pid 1 -> permanent
+    # zombie. 4 leaked per release checked, ~16 in two days. `init: true` puts docker-init
+    # (tini) at pid 1 to reap them. Do not remove without also removing every `timeout`
+    # (or other double-forking call) from the mounted helper scripts.
+    init: true
     networks: [ servarrnet ]
     ports:
       - "7474:7474"
