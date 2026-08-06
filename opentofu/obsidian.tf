@@ -45,6 +45,12 @@ resource "proxmox_virtual_environment_container" "obsidian" {
 
   initialization {
     hostname = "obsidian"
+    # Bootstrap DNS must not depend on Tailscale. A stale pre-renumber resolver
+    # here left tailscaled unable to reach its control plane after a cold boot,
+    # which also made the Caddy-backed Obsidian endpoint unreachable.
+    dns {
+      servers = ["1.1.1.1"]
+    }
     ip_config {
       ipv4 {
         address = "10.0.0.5/24"
@@ -61,6 +67,6 @@ resource "proxmox_virtual_environment_container" "obsidian" {
   }
 
   lifecycle {
-    ignore_changes = [operating_system, initialization]
+    ignore_changes = [operating_system]
   }
 }

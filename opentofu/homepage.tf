@@ -4,8 +4,9 @@
 # cpu.units=0/limit=0; pinned vm_id; stripped provider-default noise).
 
 # The guest was called "homarr" until 2026-07-12 (it once ran Homarr). Renamed in
-# Proxmox with `pct set 107 --hostname homepage`, not by tofu: `initialization` is
-# in ignore_changes below, so the hostname here is a record, not the actuator.
+# Proxmox with `pct set 107 --hostname homepage`. OpenTofu now owns initialization
+# so bootstrap DNS is enforced across cold boots; the recorded hostname already
+# matches live and remains stable.
 moved {
   from = proxmox_virtual_environment_container.homarr
   to   = proxmox_virtual_environment_container.homepage
@@ -53,6 +54,12 @@ resource "proxmox_virtual_environment_container" "homepage" {
 
   initialization {
     hostname = "homepage"
+    # Bootstrap DNS must work before tailscaled can install the tailnet resolver.
+    # The old 10.0.0.3 value survived the LAN renumber and stranded this CT
+    # off-tailnet whenever it rebooted.
+    dns {
+      servers = ["1.1.1.1"]
+    }
     ip_config {
       ipv4 {
         address = "10.0.0.8/24"
@@ -69,6 +76,6 @@ resource "proxmox_virtual_environment_container" "homepage" {
   }
 
   lifecycle {
-    ignore_changes = [operating_system, initialization]
+    ignore_changes = [operating_system]
   }
 }

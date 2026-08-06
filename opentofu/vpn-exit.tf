@@ -42,6 +42,11 @@ resource "proxmox_virtual_environment_container" "vpn_exit" {
 
   initialization {
     hostname = "vpn-exit"
+    # Host bootstrap DNS is independent of the PIA-routed container DNS. Keep
+    # it valid across LAN renumbers even though routine apt is killswitch-blocked.
+    dns {
+      servers = ["1.1.1.1"]
+    }
     ip_config {
       ipv4 {
         address = "10.0.0.7/24"
@@ -58,6 +63,6 @@ resource "proxmox_virtual_environment_container" "vpn_exit" {
   }
 
   lifecycle {
-    ignore_changes = [operating_system, initialization]
+    ignore_changes = [operating_system]
   }
 }
