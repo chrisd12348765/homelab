@@ -9,10 +9,19 @@
 # the browser always reaches this through Caddy over HTTPS, so Secure cookies are both
 # correct and enforceable. Setting it true would drop that flag for no gain.
 #
-# ACCOUNT_REGISTRATION=false with an empty DB still permits the FIRST account: ConvertX
-# tracks FIRST_RUN separately (true while the users table is empty). So the first visit
-# after deploy is where you create the account — registration is closed to everyone
-# afterwards. Don't set this true.
+# ACCOUNT_REGISTRATION=true since 2026-08-11, when the service was opened to Toni.
+#
+# ConvertX has NO admin role and no user-management UI (there is no way to create an
+# account for someone else), so sharing it with a second person means either opening
+# registration or hand-inserting a DB row. Open registration was the deliberate choice:
+# the blast radius is bounded by the TAILNET ACL, not by this flag — only the owner and
+# group:member (Toni) are granted 100.122.5.111:3000 in tailscale-acl.hujson, and the
+# tailnet is default-deny. So "anyone who can register" == "anyone already whitelisted".
+# Jobs are per-user isolated (jobs.user_id FK), so Toni's files and history stay separate.
+#
+# If the member whitelist ever grows to people who shouldn't self-serve an account, flip
+# this back to false — note that FIRST_RUN only covers the very first user, so with an
+# existing account false means nobody new can ever sign up.
 name: convertx
 
 services:
@@ -26,7 +35,7 @@ services:
       - /opt/convertx/data:/app/data
     environment:
       JWT_SECRET: "${JWT_SECRET}"
-      ACCOUNT_REGISTRATION: "false"
+      ACCOUNT_REGISTRATION: "true"
       ALLOW_UNAUTHENTICATED: "false"
       AUTO_DELETE_EVERY_N_HOURS: "24"
       # server is a 4-core N5105 running eight other LXCs. Unlimited concurrent
