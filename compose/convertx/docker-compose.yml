@@ -1,0 +1,35 @@
+# ConvertX (LXC 113) — self-hosted file conversion web UI.
+# Uploads + the SQLite user/history DB live in the bind-mounted ./data, so the deploy
+# stack_dir MUST stay /opt/convertx.
+#
+# JWT_SECRET is rendered into .env from convertx.enc.env (SOPS) at deploy time.
+#
+# HTTP_ALLOWED is deliberately left at its default (false). It only controls the
+# session cookie's `secure` flag (src/helpers/env.ts -> `secure: !HTTP_ALLOWED`), and
+# the browser always reaches this through Caddy over HTTPS, so Secure cookies are both
+# correct and enforceable. Setting it true would drop that flag for no gain.
+#
+# ACCOUNT_REGISTRATION=false with an empty DB still permits the FIRST account: ConvertX
+# tracks FIRST_RUN separately (true while the users table is empty). So the first visit
+# after deploy is where you create the account — registration is closed to everyone
+# afterwards. Don't set this true.
+name: convertx
+
+services:
+  convertx:
+    image: ghcr.io/c4illin/convertx:latest
+    container_name: convertx
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - /opt/convertx/data:/app/data
+    environment:
+      JWT_SECRET: "${JWT_SECRET}"
+      ACCOUNT_REGISTRATION: "false"
+      ALLOW_UNAUTHENTICATED: "false"
+      AUTO_DELETE_EVERY_N_HOURS: "24"
+      # server is a 4-core N5105 running eight other LXCs. Unlimited concurrent
+      # ffmpeg/LibreOffice/xelatex processes will thrash it; 2 keeps it responsive.
+      MAX_CONVERT_PROCESS: "2"
+      TZ: "${TZ}"
