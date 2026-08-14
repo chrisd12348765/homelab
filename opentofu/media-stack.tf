@@ -55,6 +55,9 @@ resource "proxmox_virtual_environment_vm" "media_stack" {
     aio          = "io_uring"
   }
 
+  # Microsoft UEFI 2023 certificates were enrolled into this VM's EFI varstore
+  # on 2026-08-13 with `qm enroll-efi-keys 105`. The bpg/proxmox v0.111.0
+  # provider does not expose Proxmox's `ms-cert=2023k` marker in this block.
   efi_disk {
     datastore_id      = "local-zfs"
     file_format       = "raw"
