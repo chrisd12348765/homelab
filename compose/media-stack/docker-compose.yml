@@ -44,6 +44,12 @@ services:
       - PIA_PASS=${OPENVPN_PASSWORD}
       - PIA_LOCATIONS=ca_toronto,ca_montreal   # closest PF-capable regions to home (US East); latency-picked, CA fallback
       - LOCAL_NETWORKS=10.0.0.0/24,100.64.0.0/10   # LAN + tailnet; NOT the container's own 172.23.0.0/24 (connected subnet is auto-allowed; listing it fails route-add)
+      # Bootstrap must not depend solely on recursive Unbound: AdGuard returns
+      # SERVFAIL (rather than timing out) when authoritative recursion is
+      # impaired, and AdGuard Home does not invoke fallback_dns for SERVFAIL.
+      # Give pia-tun two independent public recursors plus LAN AdGuard. These
+      # are used only before WireGuard exists; DNS=pia takes over afterwards.
+      - BOOTSTRAP_DNS=1.1.1.1,9.9.9.9,10.0.0.3
       - DNS=pia
       - PF_ENABLED=true
       - PS_CLIENT=qbittorrent
@@ -60,6 +66,12 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    labels:
+      # Docker does not restart an unhealthy container by itself. The existing
+      # autoheal service restarts pia-tun after a sustained failed healthcheck;
+      # qBittorrent/slskd then fail their pia0-aware checks and rejoin the fresh
+      # network namespace automatically.
+      - autoheal=true
     restart: unless-stopped
 
 # ---------------- qBittorrent ----------------
@@ -331,6 +343,17 @@ services:
     volumes:
       - ./slskd:/app
       - ${MUSIC}/incoming:/app/downloads
+    healthcheck:
+      # slskd's image healthcheck only tests its Web UI, which remains healthy
+      # inside a stale shared namespace after pia-tun restarts. Require pia0 so
+      # autoheal rejoins slskd to the replacement VPN namespace.
+      test: ["CMD-SHELL", "test -d /sys/class/net/pia0 && wget -q -T 5 -O /dev/null http://127.0.0.1:5030/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    labels:
+      - autoheal=true
     restart: unless-stopped
 
 # ---------------- Soulbeet ----------------
