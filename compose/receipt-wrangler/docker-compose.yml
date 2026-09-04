@@ -1,0 +1,87 @@
+# Receipt Wrangler — shared household receipt and expense splitting.
+#
+# All durable state is bind-mounted beneath /opt/receipt-wrangler so the
+# nightly PBS guest snapshot captures the app, database, queue, and images as
+# one recovery unit. AI inference stays on the agent VM and is configured in
+# Receipt Wrangler after first login as an OpenAI Custom vision endpoint:
+#   base URL: http://10.0.0.249:9292/v1
+#   primary:  qwen3.5-9b-vision
+#   fallback: qwen3-vl-8b
+name: receipt-wrangler
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: receipt-wrangler-db
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: "${DB_USER}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+      POSTGRES_DB: "${DB_NAME}"
+    volumes:
+      - /opt/receipt-wrangler/pgsql:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: receipt-wrangler-redis
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - /opt/receipt-wrangler/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  wrangler:
+    image: noah231515/receipt-wrangler:v7.1.0
+    container_name: receipt-wrangler
+    entrypoint: ./entrypoint.sh
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "10.0.0.14:9082:80"
+    volumes:
+      - /opt/receipt-wrangler/data:/app/receipt-wrangler-api/data
+      - /opt/receipt-wrangler/logs:/app/receipt-wrangler-api/logs
+    environment:
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      SECRET_KEY: "${SECRET_KEY}"
+      DB_ENGINE: postgresql
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_NAME: "${DB_NAME}"
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      TZ: "${TZ}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # The image contains bash; opening nginx's loopback socket avoids adding
+      # curl/wget solely for a health probe. The entrypoint exits if the API dies.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/80"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

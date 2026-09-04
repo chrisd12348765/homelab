@@ -35,6 +35,7 @@ all:
         agent:       { ansible_host: 10.0.0.106 }
         homepage:    { ansible_host: 10.0.0.107 }   # Homepage dashboard
         vpn-exit:    { ansible_host: 10.0.0.102 }   # PIA WireGuard exit (compose)
+        receipt-wrangler: { ansible_host: 10.0.0.114 } # household receipt/expense splitting
     native_hosts:
       hosts:
         adguard:     { ansible_host: 10.0.0.101 }   # LAN DNS resolver

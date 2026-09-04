@@ -23,11 +23,16 @@
         state: absent
 
     - name: Install prerequisites for the Docker apt repo
-      ansible.builtin.package:
+      # Fresh Proxmox templates can ship months-old package indexes whose exact
+      # package revisions have already disappeared from the mirror. Refresh here,
+      # before curl is needed to install Docker's repository key.
+      ansible.builtin.apt:
         name:
           - ca-certificates
           - curl
         state: present
+        update_cache: true
+        cache_valid_time: 3600
 
     - name: Ensure apt keyrings dir
       ansible.builtin.file:

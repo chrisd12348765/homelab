@@ -1,0 +1,43 @@
+Extract this receipt into Receipt Wrangler's native JSON schema.
+
+Return exactly one plaintext JSON object with no Markdown or explanation:
+{
+  "name": "merchant name",
+  "amount": 0.00,
+  "date": "YYYY-MM-DDT00:00:00Z",
+  "categories": [{"id": 1}],
+  "tags": [{"id": 1}],
+  "receiptItems": [
+    {
+      "name": "line item description",
+      "amount": 0.00,
+      "status": "OPEN",
+      "isTaxed": false
+    }
+  ]
+}
+
+Rules:
+- Use the final amount charged as "amount". For a refund, return, or credit, use negative receipt and item amounts.
+- Use ISO 8601 UTC for "date", with every time value set to zero. If the receipt omits the year, assume @currentYear.
+- Preserve duplicate item lines as separate receiptItems. Use the total price for each line, including quantity.
+- Keep discounts and coupons as negative receiptItems.
+- Add tax, paid tip/gratuity, service charge, delivery fee, and similar charges as separate receiptItems only when they contribute to the final charged total.
+- Never include suggested-tip percentages, suggested gratuity amounts, savings summaries, loyalty balances, or other hypothetical/alternative amounts. A printed tip is paid only when the final total proves it was charged.
+- Exclude payment/tender lines such as cash received, card charged, gift-card balance, and change due.
+- Reconcile in two explicit steps: first sum merchandise and discount items against any printed subtotal, adding an "Unallocated subtotal adjustment" item for a discrepancy; then add tax and other actually paid charges and compare that sum with "amount".
+- Before returning JSON, calculate the final receiptItems sum. It must equal "amount" within 0.02. Never silently leave a difference: remove non-charged informational lines or add one "Unallocated adjustment" item equal to the remaining difference.
+- Set every receiptItems status to "OPEN" and isTaxed to false.
+- Choose at most two categories and tags, using only IDs from the supplied lists. Return an empty array when none confidently apply.
+- If the merchant cannot be found confidently, use "Unknown merchant".
+- Omit no required top-level key. Use an empty receiptItems array if itemization cannot be read.
+- All numeric amounts must be JSON numbers without currency symbols.
+
+Available categories:
+@categories
+
+Available tags:
+@tags
+
+OCR text, when available:
+@ocrText
