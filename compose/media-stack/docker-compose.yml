@@ -403,6 +403,9 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - ND_SCANNER_GROUPALBUMRELEASES=true
+      - ND_LASTFM_APIKEY=${LASTFM_API_KEY}
+      - ND_LASTFM_SECRET=${LASTFM_SHARED_SECRET}
+      - ND_LISTENBRAINZ_ENABLED=true
     volumes:
       - ./navidrome:/data
       - ${MUSIC}:/data/music
