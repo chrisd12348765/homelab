@@ -23,7 +23,7 @@ resource "proxmox_virtual_environment_container" "syncthing" {
 
   disk {
     datastore_id = "local-zfs"
-    size         = 4
+    size         = 16
   }
 
   features {

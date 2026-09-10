@@ -2,6 +2,14 @@
 # Reach nodes over Tailscale; group by role so plays target cleanly.
 all:
   children:
+    workstations:
+      hosts:
+        pc:
+          ansible_connection: local
+          ansible_user: homelab
+        thinkpad:
+          ansible_host: thinkpad
+          ansible_user: homelab
     # Bare hosts (not Proxmox guests) running the dash-helpers disk-health
     # endpoints — roles/disk_health, playbooks/disk_health.yml. Two Proxmox
     # nodes' own boot disks + a standalone Pi doing backup/PBS duty; adjust
