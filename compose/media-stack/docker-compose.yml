@@ -356,27 +356,37 @@ services:
       - autoheal=true
     restart: unless-stopped
 
-# ---------------- Soulbeet ----------------
-  soulbeet:
-    image: docker.io/docccccc/soulbeet:latest
-    container_name: soulbeet
+# ---------------- DroppedNeedle ----------------
+  droppedneedle:
+    image: docker.io/droppedneedle/droppedneedle:v2.13.0@sha256:a37244e70e462fe619a09e2327e1958da6dcc2eb34cda1861a3a6f234eea7203
+    container_name: droppedneedle
     networks: [ servarrnet ]
     ports:
-      - "9765:9765"
+      - "8688:8688"
     environment:
-      - DATABASE_URL=sqlite:/data/soulbeet.db
-      - DOWNLOAD_PATH=/downloads
-      # Use the path we just discovered
-      - BEETS_CONFIG=/root/.config/beets/config.yaml
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - PORT=8688
       - TZ=${TZ}
-      - SLSKD_URL=http://gluetun:5030
-      - SLSKD_API_KEY=${SLSKD_API_KEY}
+      # slskd writes completed downloads directly beneath /app/downloads,
+      # whose host source is /mnt/media/music/incoming. Both that directory and
+      # the library are therefore visible through this single parent mount.
+      - SLSKD_DOWNLOADS_PATH=/data/music/incoming
     volumes:
-      - ./soulbeet:/data
-      # We mount the file directly to the path Beets reported
-      - ./soulbeet-config/config.yaml:/root/.config/beets/config.yaml
-      - ${MUSIC}/incoming:/downloads
-      - ${MUSIC}:/music
+      - ./droppedneedle/config:/app/config
+      - ./droppedneedle/cache:/app/cache
+      - ./droppedneedle/plugins:/app/plugins
+      - ./droppedneedle/imports:/app/imports
+      - /mnt/media:/data:rw
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8688/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10m
+      retries: 3
+    labels:
+      - autoheal=true
     restart: unless-stopped
 # ---------------- Navidrome ----------------
   navidrome:
