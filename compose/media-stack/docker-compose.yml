@@ -339,6 +339,12 @@ services:
       - SLSKD_PASSWORD=${SLSKD_WEB_PASS}
       - SLSKD_API_KEY=${SLSKD_API_KEY}
       - SLSKD_DOWNLOADS_DIR=/app/downloads
+      # Run as the stack UID/GID (the entrypoint gosu's to it). As root, slskd made
+      # every incoming/ album dir root:root, so DroppedNeedle (uid 1000) imported
+      # the files but could never unlink the sources, and its unbounded cleanup
+      # retry eventually wedged it. Existing ./slskd state must be 1000-owned.
+      - PUID=${PUID}
+      - PGID=${PGID}
       - SLSKD_UMASK=002
     volumes:
       - ./slskd:/app
