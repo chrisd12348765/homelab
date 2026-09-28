@@ -135,6 +135,19 @@ services:
       - ./prowlarr:/config
     restart: unless-stopped
 
+# Route trackers that reject the home IP through the existing PIA tunnel.
+# Prowlarr reaches this proxy at http://gluetun:3128; no host port is published.
+  indexer-vpn-proxy:
+    image: ubuntu/squid:latest
+    container_name: indexer-vpn-proxy
+    network_mode: "service:pia-tun"
+    depends_on:
+      pia-tun:
+        condition: service_healthy
+    volumes:
+      - ./indexer-vpn-proxy/squid.conf:/etc/squid/squid.conf:ro
+    restart: unless-stopped
+
 # ---------------- Sonarr ----------------
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
