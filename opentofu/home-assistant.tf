@@ -45,8 +45,8 @@ resource "proxmox_virtual_environment_container" "home_assistant" {
   # itself (403) — applied live via `pct set 110 -dev0 /dev/net/tun,mode=0660,
   # uid=0,gid=0` as true root on the node instead.
   #
-  # dev1 = the Zigbee radio: a Sonoff Zigbee 3.0 USB Dongle Plus V2 (CC2652P,
-  # ZHA radio type `znp`), passed through the same live way for the same reason:
+  # dev1 = the Zigbee radio: a Sonoff Zigbee 3.0 USB Dongle Plus V2 (EFR32MG21,
+  # ZHA radio type `ezsp`), passed through the same live way for the same reason:
   #   pct set 110 -dev1 /dev/ttyUSB0,mode=0660,uid=0,gid=0
   # Must be the /dev/ttyUSB0 host path (NOT the by-id path): Docker/runc in an
   # unprivileged LXC bind-mounts the container device path from the LXC's own
