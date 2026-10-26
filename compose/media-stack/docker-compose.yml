@@ -161,8 +161,9 @@ services:
       - TZ=${TZ}
     volumes:
       - ./sonarr:/config
-      - ${DL}:/data/downloads
-      - ${TV}:/data/tv
+      # One mount keeps downloads and library on the same VFS mount: separate
+      # binds return EXDEV on hardlink imports and silently duplicate every file.
+      - /mnt/media:/data
     restart: unless-stopped
 
 # ---------------- Radarr ----------------
@@ -178,8 +179,7 @@ services:
       - TZ=${TZ}
     volumes:
       - ./radarr:/config
-      - ${DL}:/data/downloads
-      - ${MOVIES}:/data/movies
+      - /mnt/media:/data
     restart: unless-stopped
 
 # ---------------- Jellyseerr ----------------
